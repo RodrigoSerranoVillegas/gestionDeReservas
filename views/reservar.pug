@@ -1,0 +1,38 @@
+extends layout
+
+block styles
+  link(rel="stylesheet" href="/reservar.css")
+
+block content
+  .reserva-container
+    .reserva-card
+      h1 Reserva en línea
+
+      if error
+        .reserva-error #{error}
+      if success
+        .reserva-success #{success}
+
+      form(method="POST", action="/reservar")
+        .form-group
+          label(for="nombre") Nombre completo
+          input#nombre.form-input(type="text", name="nombre", value=(form && form.nombre) || '')
+        .form-group
+          label(for="telefono") Teléfono
+          input#telefono.form-input(type="text", name="telefono", value=(form && form.telefono) || '')
+        .form-group
+          label(for="email") Email (opcional)
+          input#email.form-input(type="email", name="email", value=(form && form.email) || '')
+        .form-group
+          label(for="fecha") Fecha
+          input#fecha.form-input(type="date", name="fecha", value=(form && form.fecha) || '')
+        .form-group
+          label(for="hora") Hora
+          input#hora.form-input(type="time", name="hora", value=(form && form.hora) || '')
+        .form-group
+          label(for="numero_personas") Número de personas
+          input#numero_personas.form-input(type="number", name="numero_personas", min="1", value=(form && form.numero_personas) || 1)
+        .form-group
+          label(for="observaciones") Observaciones (ej: alergias)
+          textarea#observaciones.form-input(name="observaciones") #{(form && form.observaciones) || ''}
+        button.reserva-btn(type="submit") Reservar

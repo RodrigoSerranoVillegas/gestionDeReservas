@@ -1,0 +1,136 @@
+/* ====== RESET ====== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+/* ====== BACKGROUND ====== */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #f7f5f2, #f0ece7);
+}
+
+/* ====== CARD ====== */
+.auth-card {
+  background: #ffffff;
+  padding: 48px 42px;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 22px;
+  border: 1px solid #e3dfdb;
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, .05),
+    0 2px 8px rgba(0, 0, 0, .03);
+  backdrop-filter: blur(12px);
+}
+
+/* ====== TITLE ====== */
+.auth-title {
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: #2c2c2c;
+  text-align: center;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  font-size: 1rem;
+  text-align: center;
+  color: #6f6c6b;
+  margin-bottom: 35px;
+}
+
+/* ====== FORM ====== */
+.auth-form .form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: .92rem;
+  font-weight: 500;
+  color: #3a3a3a;
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: .95rem;
+  border-radius: 14px;
+  border: 1px solid #d6d3d1;
+  background: #faf9f7;
+  transition: .25s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #b8b4b1;
+  box-shadow: 0 0 0 3px rgba(128, 110, 96, .15);
+}
+
+/* ====== CHECKBOX ====== */
+.remember-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #6e6057;
+}
+
+.form-checkbox-label {
+  font-size: .9rem;
+  color: #514d4b;
+}
+
+/* ====== BUTTON ====== */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  background: #3a2f28; /* chocolate oscuro elegante */
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .3s ease;
+  letter-spacing: .5px;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+}
+
+/* ====== FOOTER ====== */
+.auth-footer {
+  text-align: center;
+  margin-top: 30px;
+  font-size: .9rem;
+  color: #6f6c6b;
+}
+
+.auth-footer a {
+  color: #3a2f28;
+  font-weight: 600;
+  text-decoration: none;
+  transition: .3s ease;
+}
+
+.auth-footer a:hover {
+  color: #1f1712;
+}
+

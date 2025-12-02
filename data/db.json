@@ -1,0 +1,25 @@
+{
+  "usuarios": [
+    {
+      "id": "mioscuhb-2260",
+      "nombre": "rodrigo",
+      "email": "valentapascota12@gmail.com",
+      "password": "1234567",
+      "rol": "recepcionista",
+      "estado": "activo",
+      "creadoEn": "2025-12-02T16:21:49.008Z"
+    },
+    {
+      "id": "miosdisq-3050",
+      "nombre": "rodrigo",
+      "email": "alejo2224@gmail.com",
+      "password": "12345",
+      "rol": "recepcionista",
+      "estado": "activo",
+      "creadoEn": "2025-12-02T16:22:20.522Z"
+    }
+  ],
+  "mesas": [],
+  "clientes": [],
+  "reservas": []
+}

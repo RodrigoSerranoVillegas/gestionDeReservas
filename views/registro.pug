@@ -1,0 +1,51 @@
+extends layout
+
+block content
+  .auth-container
+    .auth-card
+      h1.auth-title Crear cuenta
+      p.auth-subtitle Registra un usuario del sistema
+
+      form.auth-form(method="POST" action="/registro")
+
+        .form-row
+          .form-group
+            label.form-label(for="nombre") Nombre
+            input.form-input(type="text" id="nombre" name="nombre" placeholder="Ingresa tu nombre" required)
+
+          .form-group
+            label.form-label(for="apellido") Apellido
+            input.form-input(type="text" id="apellido" name="apellido"  placeholder="Ingresa tu apellido" required)
+        .form-group
+          label.form-label(for="email") Correo electrónico
+          input.form-input(type="email" id="email" name="email" placeholder="Ingresa tu correo electrónico" required)
+
+        .form-row
+          .form-group
+            label.form-label(for="password") Contraseña
+            input.form-input(type="password" id="password" name="password" placeholder="Ingresa tu contraseña" required)
+
+          .form-group
+            label.form-label(for="confirmPassword") Confirmar contraseña
+            input.form-input(type="password" id="confirmPassword" name="confirmPassword" required)
+
+        .form-group
+          label.form-label(for="rol") Rol del usuario
+          select.form-input(id="rol" name="rol" required)
+            option(value="" disabled selected) Selecciona un rol
+            option(value="admin") Administrador
+            option(value="recepcionista") Recepcionista / Host
+            //- option(value="cliente") Cliente
+            //- option(value="mesero") Mesero
+
+        .form-group.switch-group
+          label.form-label Estado
+          label.switch
+            input(type="checkbox" name="activo" checked)
+            span.slider
+
+        button.btn.btn-primary(type="submit") Registrar usuario
+
+      p.auth-footer
+        | ¿Ya tienes cuenta?
+        a(href="/login") Inicia sesión

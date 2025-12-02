@@ -1,0 +1,42 @@
+extends layout
+
+block content
+  .auth-container
+    .auth-card
+      h1.auth-title Inicia sesión
+      p.auth-subtitle Accede a tu cuenta de reservas
+      
+      form.auth-form(method="POST" action="/login")
+        .form-group
+          label.form-label(for="email") Correo electrónico
+          input.form-input(
+            type="email"
+            id="email"
+            name="email"
+            placeholder="tu@email.com"
+            required
+          )
+        
+        .form-group
+          label.form-label(for="password") Contraseña
+          input.form-input(
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Tu Contraseña"
+            required
+          )
+        
+        .form-group.remember-group
+          input.form-checkbox(
+            type="checkbox"
+            id="remember"
+            name="remember"
+          )
+          label.form-checkbox-label(for="remember") Recuérdame
+        
+        button.btn.btn-primary(type="submit") Iniciar sesión
+      
+      p.auth-footer
+        | ¿No tienes cuenta? 
+        a(href="/registro") Regístrate aquí
