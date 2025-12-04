@@ -1,0 +1,118 @@
+/* ===== CONTENEDOR GENERAL ===== */
+.reservas-container {
+  min-height: 100vh;
+  padding: 3rem 2rem;
+  background: #faf7f2;
+  font-family: "Poppins", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #333;
+}
+
+/* ===== TITULO ===== */
+.reservas-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  color: #2b2b2b;
+}
+
+/* ===== TARJETA ===== */
+.reservas-card {
+  background: #fff;
+  padding: 2.2rem;
+  border-radius: 18px;
+  box-shadow: 0 10px 35px rgba(0,0,0,0.06);
+  border: 1px solid #ece6df;
+  animation: fadeUp .6s ease forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* ===== TABLA ===== */
+.reservas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .95rem;
+}
+
+.reservas-table thead {
+  background: #f6f2eb;
+}
+
+.reservas-table th,
+.reservas-table td {
+  padding: 1rem 1.2rem;
+  text-align: left;
+  border-bottom: 1px solid #ebe6de;
+  font-weight: 400;
+  color: #3d3d3d;
+}
+
+.reservas-table th {
+  font-size: .85rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #5c5c5c;
+}
+
+/* ===== FILAS ===== */
+.reservas-table tr:hover td {
+  background: #fdfbf7;
+}
+
+/* ===== TEXTO NO DATA ===== */
+.no-reservas {
+  text-align: center;
+  padding: 2.5rem;
+  font-size: 1.05rem;
+  color: #6e6e6e;
+}
+
+/* ===== ETIQUETAS DE ESTADO ===== */
+.estado-chip {
+  padding: .35rem .75rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+/* === COLORES SEMÁFORO SOFISTICADOS === */
+.estado-pendiente {
+  background: #fff6e0;
+  color: #a17405;
+}
+
+.estado-confirmada {
+  background: #e5ffe7;
+  color: #107d2c;
+}
+
+.estado-en-curso {
+  background: #dfeaff;
+  color: #114d9e;
+}
+
+.estado-completada {
+  background: #eeeeee;
+  color: #444;
+}
+
+.estado-cancelada {
+  background: #ffe5e5;
+  color: #b10000;
+}
+
+.estado-no-show {
+  background: #f7d4ff;
+  color: #6b1c94;
+}
+
+/* ===== ANIMACIÓN ===== */
+@keyframes fadeUp {
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
