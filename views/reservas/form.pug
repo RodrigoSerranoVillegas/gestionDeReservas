@@ -13,11 +13,13 @@ block content
     form(method="POST" action=reserva ? `/reservas/${reserva.id_reserva}` : "/reservar")
       .form-group
         label(for="fecha_reserva") Fecha
-        input#fecha_reserva(type="date" name="fecha_reserva" value=reserva ? reserva.fecha_reserva : '' required)
+        - var fechaValue = reserva && reserva.fecha_reserva ? (typeof reserva.fecha_reserva === 'string' ? reserva.fecha_reserva.split('T')[0] : reserva.fecha_reserva) : ''
+        input#fecha_reserva(type="date" name="fecha_reserva" value=fechaValue required)
       
       .form-group
         label(for="hora_inicio") Hora Inicio
-        input#hora_inicio(type="time" name="hora_inicio" value=reserva ? reserva.hora_inicio : '' required)
+        - var horaValue = reserva && reserva.hora_inicio ? (reserva.hora_inicio.length > 5 ? reserva.hora_inicio.substring(0, 5) : reserva.hora_inicio) : ''
+        input#hora_inicio(type="time" name="hora_inicio" value=horaValue required)
       
       .form-group
         label(for="numero_personas") Número de Personas

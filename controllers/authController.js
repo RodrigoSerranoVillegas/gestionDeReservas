@@ -12,24 +12,24 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.render('login', { error: 'Email y contraseña son requeridos' });
+    return res.render('login', { error: 'Email y contraseña son requeridos', form: { email } });
   }
 
   try {
     const user = await findByEmail(email);
 
     if (!user) {
-      return res.render('login', { error: 'Email o contraseña incorrectos' });
+      return res.render('login', { error: 'Email o contraseña incorrectos', form: { email } });
     }
 
     const isValidPassword = await verifyPassword(password, user.contraseña);
 
     if (!isValidPassword) {
-      return res.render('login', { error: 'Email o contraseña incorrectos' });
+      return res.render('login', { error: 'Email o contraseña incorrectos', form: { email } });
     }
 
     if (user.estado !== 'activo') {
-      return res.render('login', { error: 'Tu cuenta está inactiva. Contacta al administrador.' });
+      return res.render('login', { error: 'Tu cuenta está inactiva. Contacta al administrador.', form: { email } });
     }
 
     // Guardar en sesión
@@ -48,7 +48,7 @@ exports.login = async (req, res) => {
     }
   } catch (error) {
     console.error('Error en login:', error);
-    return res.render('login', { error: 'Error al iniciar sesión. Intenta de nuevo.' });
+    return res.render('login', { error: 'Error al iniciar sesión. Intenta de nuevo.', form: { email } });
   }
 };
 
@@ -56,23 +56,39 @@ exports.register = async (req, res) => {
   const { nombre, email, password, confirmPassword } = req.body;
 
   if (!nombre || !email || !password || !confirmPassword) {
-    return res.render('registro', { error: 'Todos los campos son requeridos', success: null });
+    return res.render('registro', { 
+      error: 'Todos los campos son requeridos', 
+      success: null,
+      form: { nombre, email }
+    });
   }
 
   if (password !== confirmPassword) {
-    return res.render('registro', { error: 'Las contraseñas no coinciden', success: null });
+    return res.render('registro', { 
+      error: 'Las contraseñas no coinciden', 
+      success: null,
+      form: { nombre, email }
+    });
   }
 
   try {
     const { createUser } = require('../models/usuario');
     await createUser({ nombre, email, password, rol: 'recepcionista' });
-    return res.render('registro', { success: 'Usuario registrado correctamente. Inicia sesión.', error: null });
+    return res.render('registro', { 
+      success: 'Usuario registrado correctamente. Inicia sesión.', 
+      error: null,
+      form: null
+    });
   } catch (error) {
     console.error('Error en registro:', error);
     const errorMessage = error.message === 'El email ya está registrado' 
       ? 'El email ya está registrado' 
       : 'Error al registrar el usuario';
-    return res.render('registro', { error: errorMessage, success: null });
+    return res.render('registro', { 
+      error: errorMessage, 
+      success: null,
+      form: { nombre, email }
+    });
   }
 };
 

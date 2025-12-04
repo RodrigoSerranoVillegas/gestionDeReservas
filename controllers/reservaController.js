@@ -114,6 +114,26 @@ exports.showEdit = async (req, res) => {
     if (!reserva) {
       return res.status(404).send('Reserva no encontrada');
     }
+    
+    // Asegurar que la fecha esté en formato YYYY-MM-DD para el input type="date"
+    if (reserva.fecha_reserva) {
+      // Si viene como objeto Date, convertirlo a string
+      if (reserva.fecha_reserva instanceof Date) {
+        reserva.fecha_reserva = reserva.fecha_reserva.toISOString().split('T')[0];
+      } else if (typeof reserva.fecha_reserva === 'string') {
+        // Si ya es string, asegurarse de que esté en formato correcto
+        const fecha = new Date(reserva.fecha_reserva);
+        if (!isNaN(fecha.getTime())) {
+          reserva.fecha_reserva = fecha.toISOString().split('T')[0];
+        }
+      }
+    }
+    
+    // Asegurar que la hora esté en formato HH:MM para el input type="time"
+    if (reserva.hora_inicio && reserva.hora_inicio.length > 5) {
+      reserva.hora_inicio = reserva.hora_inicio.substring(0, 5);
+    }
+    
     const mesas = await findAllMesas();
     const clientes = await findAllClientes();
     res.render('reservas/form', { reserva, mesas, clientes, error: null });
@@ -133,10 +153,17 @@ exports.update = async (req, res) => {
       const horaValida = await isHoraValida(fecha_reserva, hora_inicio);
       if (!horaValida) {
         const reserva = await findById(req.params.id);
+        // Formatear fecha y hora para el formulario
+        if (reserva.fecha_reserva instanceof Date) {
+          reserva.fecha_reserva = reserva.fecha_reserva.toISOString().split('T')[0];
+        }
+        if (reserva.hora_inicio && reserva.hora_inicio.length > 5) {
+          reserva.hora_inicio = reserva.hora_inicio.substring(0, 5);
+        }
         const mesas = await findAllMesas();
         const clientes = await findAllClientes();
         return res.render('reservas/form', {
-          reserva: { ...reserva, ...req.body },
+          reserva: { ...reserva, fecha_reserva, hora_inicio, numero_personas, id_mesa, estado, observaciones },
           mesas,
           clientes,
           error: 'La hora seleccionada no está dentro del horario de atención'
@@ -156,10 +183,17 @@ exports.update = async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar reserva:', error);
     const reserva = await findById(req.params.id);
+    // Formatear fecha y hora para el formulario
+    if (reserva.fecha_reserva instanceof Date) {
+      reserva.fecha_reserva = reserva.fecha_reserva.toISOString().split('T')[0];
+    }
+    if (reserva.hora_inicio && reserva.hora_inicio.length > 5) {
+      reserva.hora_inicio = reserva.hora_inicio.substring(0, 5);
+    }
     const mesas = await findAllMesas();
     const clientes = await findAllClientes();
     res.render('reservas/form', {
-      reserva: { ...reserva, ...req.body },
+      reserva: { ...reserva, fecha_reserva, hora_inicio, numero_personas, id_mesa, estado, observaciones },
       mesas,
       clientes,
       error: error.message || 'Error al actualizar la reserva'

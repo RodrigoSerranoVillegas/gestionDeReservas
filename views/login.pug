@@ -6,6 +6,9 @@ block content
       h1.auth-title Inicia sesión
       p.auth-subtitle Accede a tu cuenta de reservas
       
+      if error
+        .error #{error}
+      
       form.auth-form(method="POST" action="/login")
         .form-group
           label.form-label(for="email") Correo electrónico
@@ -14,6 +17,7 @@ block content
             id="email"
             name="email"
             placeholder="tu@email.com"
+            value=(form && form.email) || ''
             required
           )
         
