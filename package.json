@@ -21,7 +21,11 @@
   "keywords": [],
   "type": "commonjs",
   "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.6.1",
     "express": "^5.2.1",
+    "express-session": "^1.18.0",
+    "mysql2": "^3.6.5",
     "pug": "^3.0.3"
   },
   "devDependencies": {

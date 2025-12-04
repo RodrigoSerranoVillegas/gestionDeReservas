@@ -1,0 +1,36 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Detalles de la Reserva ##{reserva.id_reserva}
+    
+    .reserva-details
+      .detail-group
+        h3 Información del Cliente
+        p Nombre: #{reserva.cliente_nombre || 'N/A'}
+        p Teléfono: #{reserva.cliente_telefono || 'N/A'}
+        p Email: #{reserva.cliente_email || 'N/A'}
+      
+      .detail-group
+        h3 Información de la Reserva
+        p Fecha: #{reserva.fecha_reserva}
+        p Hora Inicio: #{reserva.hora_inicio}
+        p Hora Fin: #{reserva.hora_fin || 'N/A'}
+        p Número de Personas: #{reserva.numero_personas}
+        p Estado: 
+          span.estado-badge(class=`estado-${reserva.estado}`) #{reserva.estado}
+        p Canal: #{reserva.canal}
+        p Mesa: #{reserva.mesa_nombre || 'Sin asignar'}
+        if reserva.observaciones
+          p Observaciones: #{reserva.observaciones}
+    
+    .actions
+      a.btn(href="/reservas") Volver a Lista
+      a.btn(href=`/reservas/${reserva.id_reserva}/editar`) Editar
+      if reserva.estado !== 'cancelada' && reserva.estado !== 'completada'
+        form.inline-form(method="POST" action=`/reservas/${reserva.id_reserva}/cancelar`)
+          button.btn.btn-danger(type="submit") Cancelar Reserva
+

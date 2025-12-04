@@ -1,0 +1,148 @@
+-- ============================================
+-- SCRIPT SQL PARA CREAR LA BASE DE DATOS
+-- Sistema de Gestión de Reservas
+-- ============================================
+-- 
+-- INSTRUCCIONES:
+-- 1. Abre phpMyAdmin
+-- 2. Selecciona la pestaña "SQL"
+-- 3. Copia y pega todo el contenido de este archivo
+-- 4. Haz clic en "Continuar" o "Ejecutar"
+--
+-- ============================================
+
+CREATE DATABASE IF NOT EXISTS gestionDeReservas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE gestionDeReservas;
+
+-- Tabla: Usuario
+CREATE TABLE IF NOT EXISTS usuarios (
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    contraseña VARCHAR(255) NOT NULL,
+    rol ENUM('admin', 'recepcionista', 'mesero') NOT NULL DEFAULT 'recepcionista',
+    estado ENUM('activo', 'inactivo') NOT NULL DEFAULT 'activo',
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_rol (rol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla: Cliente
+CREATE TABLE IF NOT EXISTS clientes (
+    id_cliente INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_completo VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20),
+    email VARCHAR(100),
+    notas TEXT,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_telefono (telefono)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla: Mesa
+CREATE TABLE IF NOT EXISTS mesas (
+    id_mesa INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    capacidad INT NOT NULL,
+    zona VARCHAR(50) NOT NULL,
+    estado ENUM('activa', 'inactiva') NOT NULL DEFAULT 'activa',
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_zona (zona),
+    INDEX idx_estado (estado)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla: ConfiguraciónRestaurante
+CREATE TABLE IF NOT EXISTS configuracion_restaurante (
+    id_config INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_restaurante VARCHAR(100) NOT NULL,
+    direccion VARCHAR(200),
+    telefono VARCHAR(20),
+    email_notificaciones VARCHAR(100),
+    duracion_estandar_reserva INT NOT NULL DEFAULT 90 COMMENT 'en minutos',
+    intervalo_reservas INT NOT NULL DEFAULT 30 COMMENT 'en minutos',
+    max_reservas_por_franja INT DEFAULT NULL,
+    tiempo_max_cancelacion_antes INT DEFAULT 60 COMMENT 'en minutos',
+    tiempo_max_retraso INT DEFAULT 20 COMMENT 'en minutos antes de marcar no-show',
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla: HorarioAtencion
+CREATE TABLE IF NOT EXISTS horarios_atencion (
+    id_horario INT AUTO_INCREMENT PRIMARY KEY,
+    dia_semana INT NOT NULL COMMENT '0=domingo, 1=lunes, 2=martes, 3=miércoles, 4=jueves, 5=viernes, 6=sábado',
+    hora_apertura TIME NOT NULL,
+    hora_cierre TIME NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_dia_semana (dia_semana),
+    INDEX idx_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla: Reserva
+CREATE TABLE IF NOT EXISTS reservas (
+    id_reserva INT AUTO_INCREMENT PRIMARY KEY,
+    id_cliente INT,
+    id_mesa INT,
+    fecha_reserva DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME,
+    numero_personas INT NOT NULL,
+    estado ENUM('pendiente', 'confirmada', 'en_curso', 'completada', 'cancelada', 'no_show') NOT NULL DEFAULT 'pendiente',
+    canal ENUM('web', 'telefono', 'presencial') NOT NULL DEFAULT 'web',
+    observaciones TEXT,
+    creado_por INT COMMENT 'id_usuario que la registró',
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente) ON DELETE SET NULL,
+    FOREIGN KEY (id_mesa) REFERENCES mesas(id_mesa) ON DELETE SET NULL,
+    FOREIGN KEY (creado_por) REFERENCES usuarios(id_usuario) ON DELETE SET NULL,
+    INDEX idx_fecha_reserva (fecha_reserva),
+    INDEX idx_estado (estado),
+    INDEX idx_id_mesa (id_mesa),
+    INDEX idx_id_cliente (id_cliente)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insertar datos iniciales
+
+-- Usuario administrador por defecto
+-- Email: admin@restaurante.com
+-- Contraseña: admin123
+INSERT INTO usuarios (nombre, email, contraseña, rol, estado) VALUES
+('Administrador', 'admin@restaurante.com', '$2b$10$lE.vCy2Esabc7JzWuhN4H.GjY388NRt5VBTDoC7ZebXhOSYXrcQda', 'admin', 'activo')
+ON DUPLICATE KEY UPDATE nombre=nombre;
+
+-- Configuración inicial del restaurante
+INSERT INTO configuracion_restaurante (nombre_restaurante, direccion, telefono, email_notificaciones, duracion_estandar_reserva, intervalo_reservas, tiempo_max_cancelacion_antes, tiempo_max_retraso) VALUES
+('Mi Restaurante', 'Calle Principal 123', '3001234567', 'reservas@restaurante.com', 90, 30, 60, 20)
+ON DUPLICATE KEY UPDATE nombre_restaurante=nombre_restaurante;
+
+-- Horarios de atención por defecto (Martes a Domingo, 12:00-15:00 y 18:00-22:00)
+INSERT INTO horarios_atencion (dia_semana, hora_apertura, hora_cierre, activo) VALUES
+(2, '12:00:00', '15:00:00', TRUE),  -- Martes
+(2, '18:00:00', '22:00:00', TRUE),  -- Martes
+(3, '12:00:00', '15:00:00', TRUE),  -- Miércoles
+(3, '18:00:00', '22:00:00', TRUE),  -- Miércoles
+(4, '12:00:00', '15:00:00', TRUE),  -- Jueves
+(4, '18:00:00', '22:00:00', TRUE),  -- Jueves
+(5, '12:00:00', '15:00:00', TRUE),  -- Viernes
+(5, '18:00:00', '22:00:00', TRUE),  -- Viernes
+(6, '12:00:00', '15:00:00', TRUE),  -- Sábado
+(6, '18:00:00', '22:00:00', TRUE),  -- Sábado
+(0, '12:00:00', '15:00:00', TRUE),  -- Domingo
+(0, '18:00:00', '22:00:00', TRUE)   -- Domingo
+ON DUPLICATE KEY UPDATE activo=activo;
+
+-- ============================================
+-- FIN DEL SCRIPT
+-- ============================================
+-- 
+-- Después de ejecutar este script:
+-- 1. Verifica que todas las tablas se hayan creado correctamente
+-- 2. El usuario administrador ya está creado:
+--    - Email: admin@restaurante.com
+--    - Contraseña: admin123
+-- 3. Configura la conexión en config/database.js
+-- 4. Ejecuta: npm start
+-- ============================================
+

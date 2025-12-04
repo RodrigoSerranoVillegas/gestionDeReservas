@@ -1,0 +1,36 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 #{horario ? 'Editar Horario' : 'Nuevo Horario'}
+    
+    if error
+      .error #{error}
+    
+    form(method="POST" action=horario ? `/horarios/${horario.id_horario}` : "/horarios")
+      .form-group
+        label(for="dia_semana") Día de la Semana
+        select#dia_semana(name="dia_semana" required)
+          each dia in diasSemana
+            option(value=dia.valor selected=(horario && horario.dia_semana == dia.valor)) #{dia.nombre}
+      
+      .form-group
+        label(for="hora_apertura") Hora de Apertura
+        input#hora_apertura(type="time" name="hora_apertura" value=horario ? horario.hora_apertura : '' required)
+      
+      .form-group
+        label(for="hora_cierre") Hora de Cierre
+        input#hora_cierre(type="time" name="hora_cierre" value=horario ? horario.hora_cierre : '' required)
+      
+      .form-group
+        label(for="activo")
+        input#activo(type="checkbox" name="activo" checked=(horario ? horario.activo : true))
+        | Activo
+      
+      .form-actions
+        button.btn(type="submit") #{horario ? 'Actualizar' : 'Crear'} Horario
+        a.btn.btn-secondary(href="/horarios") Cancelar
+

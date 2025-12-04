@@ -1,0 +1,90 @@
+extends layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .dashboard-container
+    if user
+      .dashboard-header
+        h1 Dashboard - Reservas del Día
+        .user-info
+          p Bienvenido, #{user.nombre} (#{user.rol})
+          a(href="/logout") Cerrar Sesión
+      
+      .dashboard-nav
+        if user.rol === 'admin'
+          a.btn(href="/mesas") Mesas
+          a.btn(href="/horarios") Horarios
+          a.btn(href="/usuarios") Usuarios
+          a.btn(href="/configuracion") Configuración
+        a.btn(href="/reservas") Todas las Reservas
+        a.btn(href="/clientes") Clientes
+        a.btn(href="/reservar") Nueva Reserva
+
+      if estadisticas
+        .stats-container
+          .stat-card
+            h3 Total Reservas
+            p.stat-number #{estadisticas.total || 0}
+          .stat-card
+            h3 Confirmadas
+            p.stat-number #{estadisticas.confirmadas || 0}
+          .stat-card
+            h3 En Curso
+            p.stat-number #{estadisticas.en_curso || 0}
+          .stat-card
+            h3 Completadas
+            p.stat-number #{estadisticas.completadas || 0}
+          .stat-card
+            h3 Canceladas
+            p.stat-number #{estadisticas.canceladas || 0}
+          .stat-card
+            h3 No-Shows
+            p.stat-number #{estadisticas.no_shows || 0}
+          .stat-card
+            h3 Total Personas
+            p.stat-number #{estadisticas.total_personas || 0}
+
+      .reservas-container
+        h2 Reservas de Hoy (#{fecha})
+        if reservas && reservas.length > 0
+          table.reservas-table
+            thead
+              tr
+                th Hora
+                th Cliente
+                th Personas
+                th Mesa
+                th Estado
+                th Acciones
+            tbody
+              each r in reservas
+                tr(class=r.estado === 'cancelada' || r.estado === 'no_show' ? 'cancelled' : '')
+                  td #{r.hora_inicio}
+                  td #{r.cliente_nombre || 'N/A'}
+                  td #{r.numero_personas}
+                  td #{r.mesa_nombre || 'Sin asignar'}
+                  td 
+                    span.estado-badge(class=`estado-${r.estado}`) #{r.estado}
+                  td
+                    a.btn-small(href=`/reservas/${r.id_reserva}`) Ver
+                    if r.estado === 'pendiente'
+                      form.inline-form(method="POST" action=`/reservas/${r.id_reserva}`)
+                        input(type="hidden" name="estado" value="confirmada")
+                        button.btn-small(type="submit") Confirmar
+                    if r.estado === 'confirmada'
+                      form.inline-form(method="POST" action=`/reservas/${r.id_reserva}`)
+                        input(type="hidden" name="estado" value="en_curso")
+                        button.btn-small(type="submit") Marcar En Curso
+                    if r.estado === 'en_curso'
+                      form.inline-form(method="POST" action=`/reservas/${r.id_reserva}`)
+                        input(type="hidden" name="estado" value="completada")
+                        button.btn-small(type="submit") Completar
+        else
+          p No hay reservas para hoy.
+    else
+      .login-prompt
+        p Debes iniciar sesión para ver el dashboard
+        a.btn(href="/login") Iniciar Sesión
+

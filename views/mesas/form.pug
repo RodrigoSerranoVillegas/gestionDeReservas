@@ -1,0 +1,35 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 #{mesa ? 'Editar Mesa' : 'Nueva Mesa'}
+    
+    if error
+      .error #{error}
+    
+    form(method="POST" action=mesa ? `/mesas/${mesa.id_mesa}` : "/mesas")
+      .form-group
+        label(for="nombre") Nombre
+        input#nombre(type="text" name="nombre" value=mesa ? mesa.nombre : '' required)
+      
+      .form-group
+        label(for="capacidad") Capacidad
+        input#capacidad(type="number" name="capacidad" min="1" value=mesa ? mesa.capacidad : 1 required)
+      
+      .form-group
+        label(for="zona") Zona
+        input#zona(type="text" name="zona" value=mesa ? mesa.zona : '' required placeholder="Ej: Interior, Terraza, VIP, Barra")
+      
+      .form-group
+        label(for="estado") Estado
+        select#estado(name="estado")
+          option(value="activa" selected=(mesa && mesa.estado === 'activa')) Activa
+          option(value="inactiva" selected=(mesa && mesa.estado === 'inactiva')) Inactiva
+      
+      .form-actions
+        button.btn(type="submit") #{mesa ? 'Actualizar' : 'Crear'} Mesa
+        a.btn.btn-secondary(href="/mesas") Cancelar
+

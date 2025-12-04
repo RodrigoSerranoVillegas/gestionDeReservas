@@ -1,0 +1,38 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Gestión de Horarios de Atención
+    .actions
+      a.btn(href="/horarios/nuevo") Nuevo Horario
+      a.btn(href="/dashboard") Volver al Dashboard
+
+    if horarios && horarios.length > 0
+      table.data-table
+        thead
+          tr
+            th ID
+            th Día
+            th Hora Apertura
+            th Hora Cierre
+            th Estado
+            th Acciones
+        tbody
+          each horario in horarios
+            tr(class=!horario.activo ? 'inactive' : '')
+              td #{horario.id_horario}
+              td #{horario.dia_nombre || horario.dia_semana}
+              td #{horario.hora_apertura}
+              td #{horario.hora_cierre}
+              td 
+                span.estado-badge(class=horario.activo ? 'estado-activo' : 'estado-inactivo') #{horario.activo ? 'Activo' : 'Inactivo'}
+              td
+                a.btn-small(href=`/horarios/${horario.id_horario}/editar`) Editar
+                form.inline-form(method="POST" action=`/horarios/${horario.id_horario}/eliminar`)
+                  button.btn-small.btn-danger(type="submit") Eliminar
+    else
+      p No hay horarios registrados.
+

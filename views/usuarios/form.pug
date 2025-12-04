@@ -1,0 +1,48 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 #{usuario ? 'Editar Usuario' : 'Nuevo Usuario'}
+    
+    if error
+      .error #{error}
+    
+    form(method="POST" action=usuario ? `/usuarios/${usuario.id_usuario}` : "/usuarios")
+      .form-group
+        label(for="nombre") Nombre
+        input#nombre(type="text" name="nombre" value=usuario ? usuario.nombre : '' required)
+      
+      .form-group
+        label(for="email") Email
+        input#email(type="email" name="email" value=usuario ? usuario.email : '' required)
+      
+      if !usuario
+        .form-group
+          label(for="password") Contraseña
+          input#password(type="password" name="password" required)
+        
+        .form-group
+          label(for="confirmPassword") Confirmar Contraseña
+          input#confirmPassword(type="password" name="confirmPassword" required)
+      
+      .form-group
+        label(for="rol") Rol
+        select#rol(name="rol" required)
+          option(value="admin" selected=(usuario && usuario.rol === 'admin')) Administrador
+          option(value="recepcionista" selected=(usuario && usuario.rol === 'recepcionista')) Recepcionista
+          option(value="mesero" selected=(usuario && usuario.rol === 'mesero')) Mesero
+      
+      if usuario
+        .form-group
+          label(for="estado") Estado
+          select#estado(name="estado" required)
+            option(value="activo" selected=(usuario && usuario.estado === 'activo')) Activo
+            option(value="inactivo" selected=(usuario && usuario.estado === 'inactivo')) Inactivo
+      
+      .form-actions
+        button.btn(type="submit") #{usuario ? 'Actualizar' : 'Crear'} Usuario
+        a.btn.btn-secondary(href="/usuarios") Cancelar
+

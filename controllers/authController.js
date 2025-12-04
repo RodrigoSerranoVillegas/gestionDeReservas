@@ -1,50 +1,86 @@
-const { findByEmail, createUser } = require('../models/user');
+const { findByEmail, verifyPassword } = require('../models/usuario');
 
 exports.showLogin = (req, res) => {
-  res.render('login');
+  res.render('login', { error: null });
 };
 
 exports.showRegister = (req, res) => {
-  res.render('registro');
+  res.render('registro', { error: null, success: null });
 };
 
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.render('login', { error: 'Email y contraseña son requeridos' });
   }
 
-  const user = findByEmail(email);
+  try {
+    const user = await findByEmail(email);
 
-  if (!user || user.password !== password) {
-    return res.render('login', { error: 'Email o contraseña incorrectos' });
+    if (!user) {
+      return res.render('login', { error: 'Email o contraseña incorrectos' });
+    }
+
+    const isValidPassword = await verifyPassword(password, user.contraseña);
+
+    if (!isValidPassword) {
+      return res.render('login', { error: 'Email o contraseña incorrectos' });
+    }
+
+    if (user.estado !== 'activo') {
+      return res.render('login', { error: 'Tu cuenta está inactiva. Contacta al administrador.' });
+    }
+
+    // Guardar en sesión
+    req.session.userId = user.id_usuario;
+    req.session.nombre = user.nombre;
+    req.session.email = user.email;
+    req.session.rol = user.rol;
+
+    // Redirigir según el rol
+    if (user.rol === 'admin') {
+      return res.redirect('/dashboard');
+    } else if (user.rol === 'recepcionista') {
+      return res.redirect('/dashboard');
+    } else {
+      return res.redirect('/dashboard');
+    }
+  } catch (error) {
+    console.error('Error en login:', error);
+    return res.render('login', { error: 'Error al iniciar sesión. Intenta de nuevo.' });
   }
-
-  // Aquí se guardaría en sesión (más adelante con express-session)
-  res.redirect('/dashboard');
 };
 
-exports.register = (req, res) => {
+exports.register = async (req, res) => {
   const { nombre, email, password, confirmPassword } = req.body;
 
   if (!nombre || !email || !password || !confirmPassword) {
-    return res.render('registro', { error: 'Todos los campos son requeridos' });
+    return res.render('registro', { error: 'Todos los campos son requeridos', success: null });
   }
 
   if (password !== confirmPassword) {
-    return res.render('registro', { error: 'Las contraseñas no coinciden' });
-  }
-
-  const existingUser = findByEmail(email);
-  if (existingUser) {
-    return res.render('registro', { error: 'El email ya está registrado' });
+    return res.render('registro', { error: 'Las contraseñas no coinciden', success: null });
   }
 
   try {
-    createUser({ nombre, email, password });
-    res.render('registro', { success: 'Usuario registrado correctamente. Inicia sesión.' });
+    const { createUser } = require('../models/usuario');
+    await createUser({ nombre, email, password, rol: 'recepcionista' });
+    return res.render('registro', { success: 'Usuario registrado correctamente. Inicia sesión.', error: null });
   } catch (error) {
-    res.render('registro', { error: 'Error al registrar el usuario' });
+    console.error('Error en registro:', error);
+    const errorMessage = error.message === 'El email ya está registrado' 
+      ? 'El email ya está registrado' 
+      : 'Error al registrar el usuario';
+    return res.render('registro', { error: errorMessage, success: null });
   }
+};
+
+exports.logout = (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error al cerrar sesión:', err);
+    }
+    res.redirect('/login');
+  });
 };

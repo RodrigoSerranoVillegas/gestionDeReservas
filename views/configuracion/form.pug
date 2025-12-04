@@ -1,0 +1,58 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Configuración del Restaurante
+    
+    if error
+      .error #{error}
+    if success
+      .success #{success}
+    
+    if config
+      form(method="POST" action="/configuracion")
+        .form-group
+          label(for="nombre_restaurante") Nombre del Restaurante
+          input#nombre_restaurante(type="text" name="nombre_restaurante" value=config.nombre_restaurante required)
+        
+        .form-group
+          label(for="direccion") Dirección
+          input#direccion(type="text" name="direccion" value=config.direccion || '')
+        
+        .form-group
+          label(for="telefono") Teléfono
+          input#telefono(type="text" name="telefono" value=config.telefono || '')
+        
+        .form-group
+          label(for="email_notificaciones") Email para Notificaciones
+          input#email_notificaciones(type="email" name="email_notificaciones" value=config.email_notificaciones || '')
+        
+        .form-group
+          label(for="duracion_estandar_reserva") Duración Estándar de Reserva (minutos)
+          input#duracion_estandar_reserva(type="number" name="duracion_estandar_reserva" min="30" step="15" value=config.duracion_estandar_reserva || 90 required)
+        
+        .form-group
+          label(for="intervalo_reservas") Intervalo de Reservas (minutos)
+          input#intervalo_reservas(type="number" name="intervalo_reservas" min="15" step="15" value=config.intervalo_reservas || 30 required)
+        
+        .form-group
+          label(for="max_reservas_por_franja") Máximo de Reservas por Franja (opcional)
+          input#max_reservas_por_franja(type="number" name="max_reservas_por_franja" min="1" value=config.max_reservas_por_franja || '')
+        
+        .form-group
+          label(for="tiempo_max_cancelacion_antes") Tiempo Máximo para Cancelar (minutos antes)
+          input#tiempo_max_cancelacion_antes(type="number" name="tiempo_max_cancelacion_antes" min="0" value=config.tiempo_max_cancelacion_antes || 60 required)
+        
+        .form-group
+          label(for="tiempo_max_retraso") Tiempo Máximo de Retraso (minutos antes de marcar no-show)
+          input#tiempo_max_retraso(type="number" name="tiempo_max_retraso" min="0" value=config.tiempo_max_retraso || 20 required)
+        
+        .form-actions
+          button.btn(type="submit") Guardar Configuración
+          a.btn.btn-secondary(href="/dashboard") Cancelar
+    else
+      p Error al cargar la configuración.
+

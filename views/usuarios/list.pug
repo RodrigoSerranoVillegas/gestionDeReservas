@@ -1,0 +1,38 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Gestión de Usuarios
+    .actions
+      a.btn(href="/usuarios/nuevo") Nuevo Usuario
+      a.btn(href="/dashboard") Volver al Dashboard
+
+    if usuarios && usuarios.length > 0
+      table.data-table
+        thead
+          tr
+            th ID
+            th Nombre
+            th Email
+            th Rol
+            th Estado
+            th Acciones
+        tbody
+          each usuario in usuarios
+            tr(class=usuario.estado === 'inactivo' ? 'inactive' : '')
+              td #{usuario.id_usuario}
+              td #{usuario.nombre}
+              td #{usuario.email}
+              td #{usuario.rol}
+              td 
+                span.estado-badge(class=`estado-${usuario.estado}`) #{usuario.estado}
+              td
+                a.btn-small(href=`/usuarios/${usuario.id_usuario}/editar`) Editar
+                form.inline-form(method="POST" action=`/usuarios/${usuario.id_usuario}/eliminar`)
+                  button.btn-small.btn-danger(type="submit") Eliminar
+    else
+      p No hay usuarios registrados.
+

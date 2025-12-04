@@ -1,0 +1,33 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Gestión de Clientes
+    .actions
+      a.btn(href="/dashboard") Volver al Dashboard
+
+    if clientes && clientes.length > 0
+      table.data-table
+        thead
+          tr
+            th ID
+            th Nombre
+            th Teléfono
+            th Email
+            th Acciones
+        tbody
+          each cliente in clientes
+            tr
+              td #{cliente.id_cliente}
+              td #{cliente.nombre_completo}
+              td #{cliente.telefono || 'N/A'}
+              td #{cliente.email || 'N/A'}
+              td
+                a.btn-small(href=`/clientes/${cliente.id_cliente}`) Ver
+                a.btn-small(href=`/clientes/${cliente.id_cliente}/editar`) Editar
+    else
+      p No hay clientes registrados.
+

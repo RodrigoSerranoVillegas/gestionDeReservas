@@ -1,0 +1,33 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Editar Cliente
+    
+    if error
+      .error #{error}
+    
+    form(method="POST" action=`/clientes/${cliente.id_cliente}`)
+      .form-group
+        label(for="nombre_completo") Nombre Completo
+        input#nombre_completo(type="text" name="nombre_completo" value=cliente.nombre_completo required)
+      
+      .form-group
+        label(for="telefono") Teléfono
+        input#telefono(type="text" name="telefono" value=cliente.telefono || '')
+      
+      .form-group
+        label(for="email") Email
+        input#email(type="email" name="email" value=cliente.email || '')
+      
+      .form-group
+        label(for="notas") Notas
+        textarea#notas(name="notas" rows="3") #{cliente.notas || ''}
+      
+      .form-actions
+        button.btn(type="submit") Actualizar Cliente
+        a.btn.btn-secondary(href=`/clientes/${cliente.id_cliente}`) Cancelar
+

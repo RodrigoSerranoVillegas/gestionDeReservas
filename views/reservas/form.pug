@@ -1,0 +1,50 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 #{reserva ? 'Editar Reserva' : 'Nueva Reserva'}
+    
+    if error
+      .error #{error}
+    
+    form(method="POST" action=reserva ? `/reservas/${reserva.id_reserva}` : "/reservar")
+      .form-group
+        label(for="fecha_reserva") Fecha
+        input#fecha_reserva(type="date" name="fecha_reserva" value=reserva ? reserva.fecha_reserva : '' required)
+      
+      .form-group
+        label(for="hora_inicio") Hora Inicio
+        input#hora_inicio(type="time" name="hora_inicio" value=reserva ? reserva.hora_inicio : '' required)
+      
+      .form-group
+        label(for="numero_personas") Número de Personas
+        input#numero_personas(type="number" name="numero_personas" min="1" value=reserva ? reserva.numero_personas : 1 required)
+      
+      .form-group
+        label(for="id_mesa") Mesa
+        select#id_mesa(name="id_mesa")
+          option(value="") Sin asignar
+          each mesa in mesas
+            option(value=mesa.id_mesa selected=(reserva && reserva.id_mesa == mesa.id_mesa)) #{mesa.nombre} - #{mesa.zona} (Cap: #{mesa.capacidad})
+      
+      .form-group
+        label(for="estado") Estado
+        select#estado(name="estado")
+          option(value="pendiente" selected=(reserva && reserva.estado === 'pendiente')) Pendiente
+          option(value="confirmada" selected=(reserva && reserva.estado === 'confirmada')) Confirmada
+          option(value="en_curso" selected=(reserva && reserva.estado === 'en_curso')) En Curso
+          option(value="completada" selected=(reserva && reserva.estado === 'completada')) Completada
+          option(value="cancelada" selected=(reserva && reserva.estado === 'cancelada')) Cancelada
+          option(value="no_show" selected=(reserva && reserva.estado === 'no_show')) No-Show
+      
+      .form-group
+        label(for="observaciones") Observaciones
+        textarea#observaciones(name="observaciones" rows="3") #{reserva ? reserva.observaciones || '' : ''}
+      
+      .form-actions
+        button.btn(type="submit") #{reserva ? 'Actualizar' : 'Crear'} Reserva
+        a.btn.btn-secondary(href="/reservas") Cancelar
+

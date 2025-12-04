@@ -1,0 +1,44 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Cliente: #{cliente.nombre_completo}
+    
+    .cliente-details
+      .detail-group
+        h3 Información Personal
+        p Nombre: #{cliente.nombre_completo}
+        p Teléfono: #{cliente.telefono || 'N/A'}
+        p Email: #{cliente.email || 'N/A'}
+        if cliente.notas
+          p Notas: #{cliente.notas}
+    
+    .actions
+      a.btn(href="/clientes") Volver a Lista
+      a.btn(href=`/clientes/${cliente.id_cliente}/editar`) Editar
+    
+    if historial && historial.length > 0
+      h2 Historial de Reservas
+      table.reservas-table
+        thead
+          tr
+            th Fecha
+            th Hora
+            th Personas
+            th Mesa
+            th Estado
+        tbody
+          each r in historial
+            tr
+              td #{r.fecha_reserva}
+              td #{r.hora_inicio}
+              td #{r.numero_personas}
+              td #{r.mesa_nombre || 'Sin asignar'}
+              td 
+                span.estado-badge(class=`estado-${r.estado}`) #{r.estado}
+    else
+      p Este cliente no tiene reservas registradas.
+

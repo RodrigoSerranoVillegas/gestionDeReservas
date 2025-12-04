@@ -1,0 +1,38 @@
+extends ../layout
+
+block styles
+  link(rel="stylesheet" href="/styles.css")
+
+block content
+  .container
+    h1 Gestión de Mesas
+    .actions
+      a.btn(href="/mesas/nueva") Nueva Mesa
+      a.btn(href="/dashboard") Volver al Dashboard
+
+    if mesas && mesas.length > 0
+      table.data-table
+        thead
+          tr
+            th ID
+            th Nombre
+            th Capacidad
+            th Zona
+            th Estado
+            th Acciones
+        tbody
+          each mesa in mesas
+            tr(class=mesa.estado === 'inactiva' ? 'inactive' : '')
+              td #{mesa.id_mesa}
+              td #{mesa.nombre}
+              td #{mesa.capacidad}
+              td #{mesa.zona}
+              td 
+                span.estado-badge(class=`estado-${mesa.estado}`) #{mesa.estado}
+              td
+                a.btn-small(href=`/mesas/${mesa.id_mesa}/editar`) Editar
+                form.inline-form(method="POST" action=`/mesas/${mesa.id_mesa}/eliminar`)
+                  button.btn-small.btn-danger(type="submit") Eliminar
+    else
+      p No hay mesas registradas.
+
