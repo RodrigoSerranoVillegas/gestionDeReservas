@@ -1,7 +1,4 @@
-const { createReserva, findAll, findByDate, findById, updateReserva, cancelarReserva, marcarNoShow, getEstadisticasDia } = require('../models/reserva');
-const { isHoraValida } = require('../models/horario');
-const { findAll: findAllMesas } = require('../models/mesa');
-const { findAll: findAllClientes } = require('../models/cliente');
+const { Reserva, Cliente, Mesa, Usuario, ConfiguracionRestaurante, HorarioAtencion } = require('../models');
 
 // Mostrar formulario público de reserva
 exports.showForm = (req, res) => {

@@ -1,9 +1,11 @@
-const { findAll, findById, updateCliente, getHistorialReservas } = require('../models/cliente');
+const { Cliente, Reserva } = require('../models');
 
 // Listar todos los clientes
 exports.list = async (req, res) => {
   try {
-    const clientes = await findAll();
+    const clientes = await Cliente.findAll({
+      order: [['nombre_completo', 'ASC']]
+    });
     res.render('clientes/list', { clientes });
   } catch (error) {
     console.error('Error al listar clientes:', error);
@@ -14,11 +16,21 @@ exports.list = async (req, res) => {
 // Ver detalles de un cliente
 exports.show = async (req, res) => {
   try {
-    const cliente = await findById(req.params.id);
+    const cliente = await Cliente.findByPk(req.params.id);
     if (!cliente) {
       return res.status(404).send('Cliente no encontrado');
     }
-    const historial = await getHistorialReservas(req.params.id);
+    const historial = await Reserva.findAll({
+      where: { id_cliente: req.params.id },
+      include: [
+        {
+          model: require('../models').Mesa,
+          as: 'mesa',
+          attributes: ['id_mesa', 'nombre', 'zona']
+        }
+      ],
+      order: [['fecha_reserva', 'DESC'], ['hora_inicio', 'DESC']]
+    });
     res.render('clientes/show', { cliente, historial });
   } catch (error) {
     console.error('Error al obtener cliente:', error);
@@ -29,7 +41,7 @@ exports.show = async (req, res) => {
 // Mostrar formulario de edición
 exports.showEdit = async (req, res) => {
   try {
-    const cliente = await findById(req.params.id);
+    const cliente = await Cliente.findByPk(req.params.id);
     if (!cliente) {
       return res.status(404).send('Cliente no encontrado');
     }
@@ -53,7 +65,11 @@ exports.update = async (req, res) => {
   }
 
   try {
-    await updateCliente(req.params.id, {
+    const cliente = await Cliente.findByPk(req.params.id);
+    if (!cliente) {
+      return res.status(404).send('Cliente no encontrado');
+    }
+    await cliente.update({
       nombre_completo,
       telefono: telefono || null,
       email: email || null,
@@ -62,9 +78,9 @@ exports.update = async (req, res) => {
     res.redirect(`/clientes/${req.params.id}`);
   } catch (error) {
     console.error('Error al actualizar cliente:', error);
-    const cliente = await findById(req.params.id);
+    const cliente = await Cliente.findByPk(req.params.id);
     res.render('clientes/form', {
-      cliente: { ...cliente, ...req.body },
+      cliente: { ...cliente.toJSON(), ...req.body },
       error: 'Error al actualizar el cliente'
     });
   }

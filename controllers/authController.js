@@ -1,4 +1,4 @@
-const { findByEmail, verifyPassword } = require('../models/usuario');
+const { Usuario } = require('../models');
 
 exports.showLogin = (req, res) => {
   res.render('login', { error: null });
@@ -16,13 +16,13 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const user = await findByEmail(email);
+    const user = await Usuario.findByEmail(email);
 
     if (!user) {
       return res.render('login', { error: 'Email o contraseña incorrectos', form: { email } });
     }
 
-    const isValidPassword = await verifyPassword(password, user.contraseña);
+    const isValidPassword = await user.verifyPassword(password);
 
     if (!isValidPassword) {
       return res.render('login', { error: 'Email o contraseña incorrectos', form: { email } });
@@ -72,8 +72,17 @@ exports.register = async (req, res) => {
   }
 
   try {
-    const { createUser } = require('../models/usuario');
-    await createUser({ nombre, email, password, rol: 'recepcionista' });
+    // Verificar si el email ya existe
+    const existingUser = await Usuario.findByEmail(email);
+    if (existingUser) {
+      return res.render('registro', { 
+        error: 'El email ya está registrado', 
+        success: null,
+        form: { nombre, email }
+      });
+    }
+    
+    await Usuario.create({ nombre, email, contraseña: password, rol: 'recepcionista' });
     return res.render('registro', { 
       success: 'Usuario registrado correctamente. Inicia sesión.', 
       error: null,
@@ -81,7 +90,7 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en registro:', error);
-    const errorMessage = error.message === 'El email ya está registrado' 
+    const errorMessage = error.name === 'SequelizeUniqueConstraintError' || error.message.includes('email')
       ? 'El email ya está registrado' 
       : 'Error al registrar el usuario';
     return res.render('registro', { 

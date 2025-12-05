@@ -1,9 +1,11 @@
-const { findAll, findActive, createMesa, updateMesa, deleteMesa, findById } = require('../models/mesa');
+const { Mesa } = require('../models');
 
 // Listar todas las mesas
 exports.list = async (req, res) => {
   try {
-    const mesas = await findAll();
+    const mesas = await Mesa.findAll({
+      order: [['zona', 'ASC'], ['nombre', 'ASC']]
+    });
     res.render('mesas/list', { mesas });
   } catch (error) {
     console.error('Error al listar mesas:', error);

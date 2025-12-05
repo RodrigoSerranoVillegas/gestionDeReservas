@@ -1,152 +1,74 @@
-const { query } = require('../config/database');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
 
-// Buscar usuario por email
-async function findByEmail(email) {
-  try {
-    const usuarios = await query(
-      'SELECT * FROM usuarios WHERE email = ?',
-      [email]
-    );
-    return usuarios.length > 0 ? usuarios[0] : null;
-  } catch (error) {
-    console.error('Error al buscar usuario por email:', error);
-    throw error;
-  }
-}
-
-// Buscar usuario por ID
-async function findById(id) {
-  try {
-    const usuarios = await query(
-      'SELECT id_usuario, nombre, email, rol, estado, creado_en FROM usuarios WHERE id_usuario = ?',
-      [id]
-    );
-    return usuarios.length > 0 ? usuarios[0] : null;
-  } catch (error) {
-    console.error('Error al buscar usuario por ID:', error);
-    throw error;
-  }
-}
-
-// Crear nuevo usuario
-async function createUser({ nombre, email, password, rol = 'recepcionista' }) {
-  try {
-    // Verificar si el email ya existe
-    const existingUser = await findByEmail(email);
-    if (existingUser) {
-      throw new Error('El email ya está registrado');
+const Usuario = sequelize.define('Usuario', {
+  id_usuario: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  nombre: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true
     }
-
-    // Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await query(
-      'INSERT INTO usuarios (nombre, email, contraseña, rol, estado) VALUES (?, ?, ?, ?, ?)',
-      [nombre, email, hashedPassword, rol, 'activo']
-    );
-
-    return await findById(result.insertId);
-  } catch (error) {
-    console.error('Error al crear usuario:', error);
-    throw error;
+  },
+  contraseña: {
+    type: DataTypes.STRING(255),
+    allowNull: false
+  },
+  rol: {
+    type: DataTypes.ENUM('admin', 'recepcionista', 'mesero'),
+    allowNull: false,
+    defaultValue: 'recepcionista'
+  },
+  estado: {
+    type: DataTypes.ENUM('activo', 'inactivo'),
+    allowNull: false,
+    defaultValue: 'activo'
   }
-}
-
-// Verificar contraseña
-async function verifyPassword(plainPassword, hashedPassword) {
-  return await bcrypt.compare(plainPassword, hashedPassword);
-}
-
-// Obtener todos los usuarios
-async function findAll() {
-  try {
-    return await query(
-      'SELECT id_usuario, nombre, email, rol, estado, creado_en FROM usuarios ORDER BY nombre'
-    );
-  } catch (error) {
-    console.error('Error al obtener usuarios:', error);
-    throw error;
+}, {
+  tableName: 'usuarios',
+  timestamps: true,
+  createdAt: 'creado_en',
+  updatedAt: false,
+  hooks: {
+    beforeCreate: async (usuario) => {
+      if (usuario.contraseña) {
+        usuario.contraseña = await bcrypt.hash(usuario.contraseña, 10);
+      }
+    },
+    beforeUpdate: async (usuario) => {
+      if (usuario.changed('contraseña')) {
+        usuario.contraseña = await bcrypt.hash(usuario.contraseña, 10);
+      }
+    }
   }
-}
+});
 
-// Actualizar usuario
-async function updateUser(id, { nombre, email, rol, estado }) {
-  try {
-    const updates = [];
-    const params = [];
-
-    if (nombre !== undefined) {
-      updates.push('nombre = ?');
-      params.push(nombre);
-    }
-    if (email !== undefined) {
-      updates.push('email = ?');
-      params.push(email);
-    }
-    if (rol !== undefined) {
-      updates.push('rol = ?');
-      params.push(rol);
-    }
-    if (estado !== undefined) {
-      updates.push('estado = ?');
-      params.push(estado);
-    }
-
-    if (updates.length === 0) {
-      return await findById(id);
-    }
-
-    params.push(id);
-    await query(
-      `UPDATE usuarios SET ${updates.join(', ')} WHERE id_usuario = ?`,
-      params
-    );
-
-    return await findById(id);
-  } catch (error) {
-    console.error('Error al actualizar usuario:', error);
-    throw error;
-  }
-}
-
-// Cambiar contraseña
-async function updatePassword(id, newPassword) {
-  try {
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await query(
-      'UPDATE usuarios SET contraseña = ? WHERE id_usuario = ?',
-      [hashedPassword, id]
-    );
-    return true;
-  } catch (error) {
-    console.error('Error al actualizar contraseña:', error);
-    throw error;
-  }
-}
-
-// Eliminar usuario (soft delete - cambiar estado)
-async function deleteUser(id) {
-  try {
-    await query(
-      'UPDATE usuarios SET estado = ? WHERE id_usuario = ?',
-      ['inactivo', id]
-    );
-    return true;
-  } catch (error) {
-    console.error('Error al eliminar usuario:', error);
-    throw error;
-  }
-}
-
-module.exports = {
-  findByEmail,
-  findById,
-  createUser,
-  verifyPassword,
-  findAll,
-  updateUser,
-  updatePassword,
-  deleteUser
+// Método de instancia para verificar contraseña
+Usuario.prototype.verifyPassword = async function(plainPassword) {
+  return await bcrypt.compare(plainPassword, this.contraseña);
 };
 
+// Método estático para buscar por email
+Usuario.findByEmail = async function(email) {
+  return await this.findOne({ where: { email } });
+};
+
+// Método estático para buscar por ID de forma segura (sin contraseña)
+Usuario.findByIdSafe = async function(id) {
+  const usuario = await this.findByPk(id, {
+    attributes: { exclude: ['contraseña'] }
+  });
+  return usuario;
+};
+
+module.exports = Usuario;

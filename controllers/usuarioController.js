@@ -1,9 +1,12 @@
-const { findAll, findById, createUser, updateUser, deleteUser } = require('../models/usuario');
+const { Usuario } = require('../models');
 
 // Listar todos los usuarios
 exports.list = async (req, res) => {
   try {
-    const usuarios = await findAll();
+    const usuarios = await Usuario.findAll({
+      attributes: { exclude: ['contraseña'] },
+      order: [['nombre', 'ASC']]
+    });
     res.render('usuarios/list', { usuarios });
   } catch (error) {
     console.error('Error al listar usuarios:', error);
@@ -35,13 +38,16 @@ exports.create = async (req, res) => {
   }
 
   try {
-    await createUser({ nombre, email, password, rol: rol || 'recepcionista' });
+    await Usuario.create({ nombre, email, contraseña: password, rol: rol || 'recepcionista' });
     res.redirect('/usuarios');
   } catch (error) {
     console.error('Error al crear usuario:', error);
+    const errorMessage = error.name === 'SequelizeUniqueConstraintError'
+      ? 'El email ya está registrado'
+      : error.message || 'Error al crear el usuario';
     res.render('usuarios/form', {
       usuario: req.body,
-      error: error.message || 'Error al crear el usuario'
+      error: errorMessage
     });
   }
 };
@@ -49,7 +55,7 @@ exports.create = async (req, res) => {
 // Mostrar formulario de edición
 exports.showEdit = async (req, res) => {
   try {
-    const usuario = await findById(req.params.id);
+    const usuario = await Usuario.findByIdSafe(req.params.id);
     if (!usuario) {
       return res.status(404).send('Usuario no encontrado');
     }
@@ -73,14 +79,18 @@ exports.update = async (req, res) => {
   }
 
   try {
-    await updateUser(req.params.id, { nombre, email, rol, estado });
+    const usuario = await Usuario.findByPk(req.params.id);
+    if (!usuario) {
+      return res.status(404).send('Usuario no encontrado');
+    }
+    await usuario.update({ nombre, email, rol, estado });
     res.redirect('/usuarios');
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
-    const usuario = await findById(req.params.id);
+    const usuario = await Usuario.findByIdSafe(req.params.id);
     res.render('usuarios/form', {
-      usuario: { ...usuario, ...req.body },
-      error: 'Error al actualizar el usuario'
+      usuario: { ...usuario.toJSON(), ...req.body },
+      error: error.message || 'Error al actualizar el usuario'
     });
   }
 };
@@ -88,7 +98,11 @@ exports.update = async (req, res) => {
 // Eliminar usuario
 exports.delete = async (req, res) => {
   try {
-    await deleteUser(req.params.id);
+    const usuario = await Usuario.findByPk(req.params.id);
+    if (!usuario) {
+      return res.status(404).send('Usuario no encontrado');
+    }
+    await usuario.update({ estado: 'inactivo' });
     res.redirect('/usuarios');
   } catch (error) {
     console.error('Error al eliminar usuario:', error);

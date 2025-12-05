@@ -1,41 +1,34 @@
-const mysql = require('mysql2/promise');
+const { Sequelize } = require('sequelize');
+require('dotenv').config();
 
 // Configuración de la base de datos
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'gestionDeReservas',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-};
-
-// Crear pool de conexiones
-const pool = mysql.createPool(dbConfig);
-
-// Función para ejecutar consultas
-async function query(sql, params = []) {
-  try {
-    const [results] = await pool.execute(sql, params);
-    return results;
-  } catch (error) {
-    console.error('Error en consulta SQL:', error);
-    throw error;
+const sequelize = new Sequelize(
+  process.env.DB_NAME || 'gestionDeReservas',
+  process.env.DB_USER || 'root',
+  process.env.DB_PASSWORD || '',
+  {
+    host: process.env.DB_HOST || 'localhost',
+    dialect: 'mysql',
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    },
+    define: {
+      timestamps: true,
+      underscored: false,
+      freezeTableName: true
+    }
   }
-}
-
-// Función para obtener una conexión del pool
-async function getConnection() {
-  return await pool.getConnection();
-}
+);
 
 // Función para probar la conexión
 async function testConnection() {
   try {
-    const connection = await pool.getConnection();
+    await sequelize.authenticate();
     console.log('Conexión a la base de datos establecida correctamente');
-    connection.release();
     return true;
   } catch (error) {
     console.error('Error al conectar con la base de datos:', error);
@@ -44,9 +37,6 @@ async function testConnection() {
 }
 
 module.exports = {
-  pool,
-  query,
-  getConnection,
+  sequelize,
   testConnection
 };
-
