@@ -12,6 +12,8 @@ router.get('/inicio', reservaCtrl.list);
 // Rutas protegidas
 router.get('/dashboard', requireAuth, reservaCtrl.dashboard);
 router.get('/reservas', requireAuth, reservaCtrl.listAll);
+router.get('/reservas/nueva', requireAuth, reservaCtrl.showCreate);
+router.post('/reservas/nueva', requireAuth, reservaCtrl.createInternal);
 router.get('/reservas/:id', requireAuth, reservaCtrl.show);
 router.get('/reservas/:id/editar', requireAuth, reservaCtrl.showEdit);
 router.post('/reservas/:id', requireAuth, reservaCtrl.update);

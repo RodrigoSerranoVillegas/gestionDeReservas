@@ -7,7 +7,8 @@ block content
   .container
     h1 Todas las Reservas
     .actions
-      a.btn(href="/reservar") Nueva Reserva
+      a.btn(href="/reservas/nueva") Nueva Reserva (Interna)
+      a.btn(href="/reservar") Reserva Pública
       a.btn(href="/dashboard") Dashboard
 
     if reservas && reservas.length > 0

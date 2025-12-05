@@ -57,10 +57,11 @@ app.get('/', (req, res) => res.redirect('/inicio'));
 
 // Sincronizar modelos con la base de datos (solo en desarrollo)
 if (process.env.NODE_ENV !== 'production') {
-  sequelize.sync({ alter: false }).then(() => {
+  sequelize.sync({ alter: true }).then(() => {
     console.log('Modelos sincronizados con la base de datos');
   }).catch(err => {
     console.error('Error al sincronizar modelos:', err);
+    console.error('Si el error es sobre columnas faltantes, ejecuta el script migrations/add_reset_password_fields.sql');
   });
 }
 

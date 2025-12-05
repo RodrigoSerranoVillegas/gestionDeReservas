@@ -10,7 +10,15 @@ block content
     if error
       .error #{error}
     
-    form(method="POST" action=reserva ? `/reservas/${reserva.id_reserva}` : "/reservar")
+    form(method="POST" action=reserva ? `/reservas/${reserva.id_reserva}` : "/reservas/nueva")
+      if !reserva
+        .form-group
+          label(for="id_cliente") Cliente
+          select#id_cliente(name="id_cliente" required)
+            option(value="") Seleccione un cliente
+            each cliente in clientes
+              option(value=cliente.id_cliente) #{cliente.nombre_completo} - #{cliente.telefono || cliente.email || ''}
+      
       .form-group
         label(for="fecha_reserva") Fecha
         - var fechaValue = reserva && reserva.fecha_reserva ? (typeof reserva.fecha_reserva === 'string' ? reserva.fecha_reserva.split('T')[0] : reserva.fecha_reserva) : ''

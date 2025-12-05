@@ -399,6 +399,56 @@ h1, h2, h3 {
   border: 1px solid #c3e6cb;
 }
 
+.token-info {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.token-info p {
+  margin: 8px 0;
+}
+
+.token-info p:first-child {
+  font-weight: 600;
+  color: #3a2f28;
+  margin-bottom: 12px;
+}
+
+.token-link {
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+  word-break: break-all;
+}
+
+.token-link a {
+  color: #3a2f28;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.token-link a:hover {
+  text-decoration: underline;
+}
+
+.token-display {
+  margin: 15px 0;
+}
+
+.token-display code {
+  background: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  color: #3a2f28;
+}
+
 /* ====== DETALLES ====== */
 .detail-group {
   background: #ffffff;

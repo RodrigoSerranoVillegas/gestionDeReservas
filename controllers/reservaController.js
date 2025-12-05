@@ -1,4 +1,166 @@
 const { Reserva, Cliente, Mesa, Usuario, ConfiguracionRestaurante, HorarioAtencion } = require('../models');
+const { validarCrearReserva, validarActualizarReserva } = require('../utils/validaciones');
+
+// Funciones helper
+async function createReserva(data) {
+  // Buscar o crear cliente
+  const cliente = await Cliente.findOrCreateCliente({
+    nombre_completo: data.nombre_completo,
+    telefono: data.telefono,
+    email: data.email,
+    notas: data.observaciones
+  });
+
+  // Calcular hora_fin basada en duración estándar
+  const config = await ConfiguracionRestaurante.getConfig();
+  const [horaH, horaM] = data.hora_inicio.split(':').map(Number);
+  const horaInicioMinutos = horaH * 60 + horaM;
+  const duracion = data.duracion || config.duracion_estandar_reserva;
+  const horaFinMinutos = horaInicioMinutos + duracion;
+  const horaFin = `${Math.floor(horaFinMinutos / 60).toString().padStart(2, '0')}:${(horaFinMinutos % 60).toString().padStart(2, '0')}`;
+
+  // Crear la reserva
+  const reserva = await Reserva.create({
+    id_cliente: cliente.id_cliente,
+    id_mesa: data.id_mesa || null,
+    fecha_reserva: data.fecha_reserva,
+    hora_inicio: data.hora_inicio,
+    hora_fin: horaFin,
+    numero_personas: data.numero_personas,
+    observaciones: data.observaciones,
+    canal: data.canal || 'web',
+    estado: data.estado || 'pendiente',
+    creado_por: data.creado_por || null
+  });
+
+  return reserva;
+}
+
+// Función helper para formatear reserva con relaciones planas
+function formatReserva(reserva) {
+  if (!reserva) return null;
+  
+  const reservaData = reserva.toJSON ? reserva.toJSON() : reserva;
+  
+  // Aplanar relaciones para compatibilidad con vistas
+  if (reservaData.cliente) {
+    reservaData.cliente_nombre = reservaData.cliente.nombre_completo;
+    reservaData.cliente_telefono = reservaData.cliente.telefono;
+    reservaData.cliente_email = reservaData.cliente.email;
+    // Preservar id_cliente si no está en el nivel principal
+    if (!reservaData.id_cliente && reservaData.cliente.id_cliente) {
+      reservaData.id_cliente = reservaData.cliente.id_cliente;
+    }
+  }
+  
+  if (reservaData.mesa) {
+    reservaData.mesa_nombre = reservaData.mesa.nombre;
+    reservaData.mesa_zona = reservaData.mesa.zona;
+    reservaData.mesa_capacidad = reservaData.mesa.capacidad;
+    // Preservar id_mesa si no está en el nivel principal
+    if (!reservaData.id_mesa && reservaData.mesa.id_mesa) {
+      reservaData.id_mesa = reservaData.mesa.id_mesa;
+    }
+  }
+  
+  // Asegurar que id_mesa sea un número o null
+  if (reservaData.id_mesa !== null && reservaData.id_mesa !== undefined) {
+    reservaData.id_mesa = parseInt(reservaData.id_mesa);
+  } else {
+    reservaData.id_mesa = null;
+  }
+  
+  return reservaData;
+}
+
+async function findAll() {
+  const reservas = await Reserva.findAll({
+    include: [
+      { model: Cliente, as: 'cliente', attributes: ['id_cliente', 'nombre_completo', 'telefono', 'email'] },
+      { model: Mesa, as: 'mesa', attributes: ['id_mesa', 'nombre', 'zona', 'capacidad'] }
+    ],
+    order: [['fecha_reserva', 'DESC'], ['hora_inicio', 'ASC']]
+  });
+  
+  return reservas.map(formatReserva);
+}
+
+async function findByDate(fecha) {
+  const reservas = await Reserva.findByDateWithRelations(fecha);
+  return reservas.map(formatReserva);
+}
+
+async function getEstadisticasDia(fecha) {
+  return await Reserva.getEstadisticasDia(fecha);
+}
+
+async function findById(id) {
+  const reserva = await Reserva.findByPk(id, {
+    include: [
+      { model: Cliente, as: 'cliente' },
+      { model: Mesa, as: 'mesa' }
+    ]
+  });
+  return formatReserva(reserva);
+}
+
+async function updateReserva(id, data) {
+  const reserva = await Reserva.findByPk(id);
+  if (!reserva) {
+    throw new Error('Reserva no encontrada');
+  }
+  
+  // Calcular hora_fin si se actualiza hora_inicio
+  if (data.hora_inicio) {
+    const config = await ConfiguracionRestaurante.getConfig();
+    const [horaH, horaM] = data.hora_inicio.split(':').map(Number);
+    const horaInicioMinutos = horaH * 60 + horaM;
+    const duracion = data.duracion || config.duracion_estandar_reserva;
+    const horaFinMinutos = horaInicioMinutos + duracion;
+    data.hora_fin = `${Math.floor(horaFinMinutos / 60).toString().padStart(2, '0')}:${(horaFinMinutos % 60).toString().padStart(2, '0')}`;
+  }
+  
+  await reserva.update(data);
+  // Recargar con relaciones para obtener datos actualizados
+  await reserva.reload({
+    include: [
+      { model: Cliente, as: 'cliente' },
+      { model: Mesa, as: 'mesa' }
+    ]
+  });
+  return formatReserva(reserva);
+}
+
+async function cancelarReserva(id) {
+  const reserva = await Reserva.findByPk(id);
+  if (!reserva) {
+    throw new Error('Reserva no encontrada');
+  }
+  await reserva.update({ estado: 'cancelada' });
+  return reserva;
+}
+
+async function marcarNoShow(id) {
+  const reserva = await Reserva.findByPk(id);
+  if (!reserva) {
+    throw new Error('Reserva no encontrada');
+  }
+  await reserva.update({ estado: 'no_show' });
+  return reserva;
+}
+
+async function findAllMesas() {
+  return await Mesa.findAll({
+    where: { estado: 'activa' },
+    order: [['nombre', 'ASC']]
+  });
+}
+
+async function findAllClientes() {
+  return await Cliente.findAll({
+    order: [['nombre_completo', 'ASC']]
+  });
+}
 
 // Mostrar formulario público de reserva
 exports.showForm = (req, res) => {
@@ -18,15 +180,22 @@ exports.create = async (req, res) => {
   }
 
   try {
-    // Validar que la hora esté dentro del horario de atención
-    const horaValida = await isHoraValida(fecha, hora);
-    if (!horaValida) {
-      return res.render('reservar', {
-        error: 'La hora seleccionada no está dentro del horario de atención',
-        success: null,
-        form: req.body
-      });
-    }
+    // Buscar o crear cliente primero para obtener id_cliente
+    const cliente = await Cliente.findOrCreateCliente({
+      nombre_completo: nombre,
+      telefono,
+      email,
+      notas: observaciones
+    });
+
+    // Validar todas las reglas de negocio
+    await validarCrearReserva({
+      fecha_reserva: fecha,
+      hora_inicio: hora,
+      numero_personas: parseInt(numero_personas),
+      id_mesa: null, // No se asigna mesa automáticamente en reserva pública
+      id_cliente: cliente.id_cliente
+    });
 
     const reserva = await createReserva({
       nombre_completo: nombre,
@@ -104,6 +273,82 @@ exports.show = async (req, res) => {
   }
 };
 
+// Mostrar formulario de creación (interno)
+exports.showCreate = async (req, res) => {
+  try {
+    const mesas = await findAllMesas();
+    const clientes = await findAllClientes();
+    res.render('reservas/form', { reserva: null, mesas, clientes, error: null });
+  } catch (error) {
+    console.error('Error al cargar formulario de creación:', error);
+    res.status(500).send('Error al cargar el formulario');
+  }
+};
+
+// Crear reserva (interno - recepcionista/admin)
+exports.createInternal = async (req, res) => {
+  const { id_cliente, fecha_reserva, hora_inicio, numero_personas, id_mesa, estado, observaciones } = req.body;
+  const creado_por = req.session?.userId || null;
+
+  if (!id_cliente || !fecha_reserva || !hora_inicio || !numero_personas) {
+    const mesas = await findAllMesas();
+    const clientes = await findAllClientes();
+    return res.render('reservas/form', {
+      reserva: req.body,
+      mesas,
+      clientes,
+      error: 'Cliente, fecha, hora y número de personas son requeridos'
+    });
+  }
+
+  try {
+    // Obtener cliente
+    const cliente = await Cliente.findByPk(id_cliente);
+    if (!cliente) {
+      throw new Error('Cliente no encontrado');
+    }
+
+    // Preparar datos para validación
+    const dataReserva = {
+      fecha_reserva,
+      hora_inicio,
+      numero_personas: parseInt(numero_personas),
+      id_mesa: id_mesa && id_mesa !== '' && id_mesa !== '0' ? parseInt(id_mesa) : null,
+      id_cliente: cliente.id_cliente
+    };
+
+    // Validar todas las reglas de negocio
+    await validarCrearReserva(dataReserva);
+
+    // Crear la reserva
+    const reserva = await createReserva({
+      nombre_completo: cliente.nombre_completo,
+      telefono: cliente.telefono,
+      email: cliente.email,
+      fecha_reserva,
+      hora_inicio,
+      numero_personas: parseInt(numero_personas),
+      id_mesa: dataReserva.id_mesa,
+      observaciones,
+      canal: 'presencial',
+      estado: estado || 'pendiente',
+      creado_por
+    });
+
+    res.redirect(`/reservas/${reserva.id_reserva}`);
+  } catch (error) {
+    console.error('Error al crear reserva:', error);
+    const mesas = await findAllMesas();
+    const clientes = await findAllClientes();
+    res.render('reservas/form', {
+      reserva: req.body,
+      mesas,
+      clientes,
+      error: error.message || 'Error al crear la reserva'
+    });
+  }
+};
+
 // Mostrar formulario de edición
 exports.showEdit = async (req, res) => {
   try {
@@ -143,48 +388,49 @@ exports.showEdit = async (req, res) => {
 // Actualizar reserva
 exports.update = async (req, res) => {
   const { fecha_reserva, hora_inicio, numero_personas, id_mesa, estado, observaciones } = req.body;
+  const rolUsuario = req.session?.rol || 'recepcionista';
 
   try {
-    // Validar hora si se cambia
-    if (hora_inicio && fecha_reserva) {
-      const horaValida = await isHoraValida(fecha_reserva, hora_inicio);
-      if (!horaValida) {
-        const reserva = await findById(req.params.id);
-        // Formatear fecha y hora para el formulario
-        if (reserva.fecha_reserva instanceof Date) {
-          reserva.fecha_reserva = reserva.fecha_reserva.toISOString().split('T')[0];
-        }
-        if (reserva.hora_inicio && reserva.hora_inicio.length > 5) {
-          reserva.hora_inicio = reserva.hora_inicio.substring(0, 5);
-        }
-        const mesas = await findAllMesas();
-        const clientes = await findAllClientes();
-        return res.render('reservas/form', {
-          reserva: { ...reserva, fecha_reserva, hora_inicio, numero_personas, id_mesa, estado, observaciones },
-          mesas,
-          clientes,
-          error: 'La hora seleccionada no está dentro del horario de atención'
-        });
-      }
-    }
-
-    await updateReserva(req.params.id, {
+    // Preparar datos para actualizar
+    const updateData = {
       fecha_reserva,
       hora_inicio,
-      numero_personas: numero_personas ? parseInt(numero_personas) : undefined,
-      id_mesa: id_mesa ? parseInt(id_mesa) : null,
       estado,
       observaciones
-    });
+    };
+    
+    // Solo actualizar numero_personas si se proporciona
+    if (numero_personas) {
+      updateData.numero_personas = parseInt(numero_personas);
+    }
+    
+    // Manejar id_mesa: si viene vacío o "0", establecer como null
+    if (id_mesa && id_mesa !== '' && id_mesa !== '0') {
+      updateData.id_mesa = parseInt(id_mesa);
+    } else {
+      updateData.id_mesa = null;
+    }
+
+    // Validar todas las reglas de negocio antes de actualizar
+    await validarActualizarReserva(req.params.id, updateData, rolUsuario);
+    
+    await updateReserva(req.params.id, updateData);
     res.redirect(`/reservas/${req.params.id}`);
   } catch (error) {
     console.error('Error al actualizar reserva:', error);
     const reserva = await findById(req.params.id);
     // Formatear fecha y hora para el formulario
-    if (reserva.fecha_reserva instanceof Date) {
-      reserva.fecha_reserva = reserva.fecha_reserva.toISOString().split('T')[0];
+    if (reserva && reserva.fecha_reserva) {
+      if (reserva.fecha_reserva instanceof Date) {
+        reserva.fecha_reserva = reserva.fecha_reserva.toISOString().split('T')[0];
+      } else if (typeof reserva.fecha_reserva === 'string') {
+        const fecha = new Date(reserva.fecha_reserva);
+        if (!isNaN(fecha.getTime())) {
+          reserva.fecha_reserva = fecha.toISOString().split('T')[0];
+        }
+      }
     }
-    if (reserva.hora_inicio && reserva.hora_inicio.length > 5) {
+    if (reserva && reserva.hora_inicio && reserva.hora_inicio.length > 5) {
       reserva.hora_inicio = reserva.hora_inicio.substring(0, 5);
     }
     const mesas = await findAllMesas();
