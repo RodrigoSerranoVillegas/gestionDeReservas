@@ -10,7 +10,8 @@ block content
         h1 Dashboard - Reservas del Día
         .user-info
           p Bienvenido, #{user.nombre} (#{user.rol})
-          a(href="/logout") Cerrar Sesión
+          a(href="/logout", style="position: relative; top:-8px; margin-top:20px; background:#d32f2f; color:#fff; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-size:0.95rem; text-decoration:none;") Cerrar Sesión
+
       
       .dashboard-nav
         if user.rol === 'admin'

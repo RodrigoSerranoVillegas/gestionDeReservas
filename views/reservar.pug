@@ -36,3 +36,6 @@ block content
           label(for="observaciones") Observaciones (ej: alergias)
           textarea#observaciones.form-input(name="observaciones") #{(form && form.observaciones) || ''}
         button.reserva-btn(type="submit") Reservar
+              // 🔙 Botón de volver
+      a.volver-btn(href="/dashboard") Volver
+
