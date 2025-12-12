@@ -17,6 +17,7 @@ router.post('/reservas/nueva', requireAuth, reservaCtrl.createInternal);
 router.get('/reservas/:id', requireAuth, reservaCtrl.show);
 router.get('/reservas/:id/editar', requireAuth, reservaCtrl.showEdit);
 router.post('/reservas/:id', requireAuth, reservaCtrl.update);
+router.post('/reservas/:id/reagendar', requireAuth, reservaCtrl.reagendar);
 router.post('/reservas/:id/cancelar', requireAuth, reservaCtrl.cancel);
 router.post('/reservas/:id/no-show', requireAuth, reservaCtrl.noShow);
 

@@ -9,8 +9,12 @@ block content
       .dashboard-header
         h1 Dashboard - Reservas del Día
         .user-info
-          p Bienvenido, #{user.nombre} (#{user.rol})
-          a(href="/logout") Cerrar Sesión
+          .user-greeting
+            span.user-icon 👤
+            span.user-text Bienvenido, 
+            span.user-name #{user.nombre}
+            span.user-role (#{user.rol})
+          a.btn-logout(href="/logout") 🚪 Cerrar Sesión
       
       .dashboard-nav
         if user.rol === 'admin'
@@ -45,6 +49,11 @@ block content
           .stat-card
             h3 Total Personas
             p.stat-number #{estadisticas.total_personas || 0}
+          if capacidadTotal
+            .stat-card
+              h3 Capacidad
+              p.stat-number #{capacidadOcupada || 0} / #{capacidadTotal}
+              p.stat-label(style="font-size: 0.8rem; margin-top: 5px;") #{Math.round((capacidadOcupada / capacidadTotal) * 100) || 0}% ocupada
 
       .reservas-container
         h2 Reservas de Hoy (#{fecha})
@@ -83,6 +92,31 @@ block content
                         button.btn-small(type="submit") Completar
         else
           p No hay reservas para hoy.
+      
+      // Vista por Mesa
+      if reservasPorMesa && reservasPorMesa.length > 0
+        .mesas-container(style="margin-top: 30px;")
+          h2 Vista por Mesa
+          .mesas-grid
+            each grupoMesa in reservasPorMesa
+              .mesa-card(class=grupoMesa.mesa.id_mesa ? '' : 'sin-mesa')
+                .mesa-header
+                  h3 #{grupoMesa.mesa.nombre || 'Sin Mesa'}
+                  if grupoMesa.mesa.zona
+                    span.mesa-zona #{grupoMesa.mesa.zona}
+                  if grupoMesa.mesa.capacidad
+                    span.mesa-capacidad Cap: #{grupoMesa.mesa.capacidad}
+                if grupoMesa.reservas && grupoMesa.reservas.length > 0
+                  .mesa-reservas
+                    each reserva in grupoMesa.reservas
+                      .reserva-item(class=`estado-${reserva.estado}`)
+                        .reserva-hora #{reserva.hora_inicio}
+                        .reserva-cliente #{reserva.cliente_nombre || 'N/A'}
+                        .reserva-personas #{reserva.numero_personas} pers.
+                        .reserva-estado
+                          span.estado-badge(class=`estado-${reserva.estado}`) #{reserva.estado}
+                else
+                  .mesa-libre Libre
     else
       .login-prompt
         p Debes iniciar sesión para ver el dashboard

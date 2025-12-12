@@ -14,7 +14,7 @@ exports.showRegister = (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password, remember } = req.body;
+  const { email, password } = req.body;
 
   if (!email || !password) {
     return res.render('login', { error: 'Email y contraseña son requeridos', form: { email } });
@@ -42,13 +42,6 @@ exports.login = async (req, res) => {
     req.session.nombre = user.nombre;
     req.session.email = user.email;
     req.session.rol = user.rol;
-
-    // Si "recuérdame" está marcado, extender la duración de la sesión a 30 días
-    if (remember === 'on') {
-      req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 días
-    } else {
-      req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 horas (default)
-    }
 
     // Redirigir según el rol
     if (user.rol === 'admin') {

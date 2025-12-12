@@ -1,5 +1,5 @@
 const { Reserva, Cliente, Mesa, Usuario, ConfiguracionRestaurante, HorarioAtencion } = require('../models');
-const { validarCrearReserva, validarActualizarReserva } = require('../utils/validaciones');
+const { validarCrearReserva, validarActualizarReserva, validarEdicionFechaPasada } = require('../utils/validaciones');
 
 // Funciones helper
 async function createReserva(data) {
@@ -19,10 +19,31 @@ async function createReserva(data) {
   const horaFinMinutos = horaInicioMinutos + duracion;
   const horaFin = `${Math.floor(horaFinMinutos / 60).toString().padStart(2, '0')}:${(horaFinMinutos % 60).toString().padStart(2, '0')}`;
 
+  // Asignación automática de mesa si no se especificó una
+  let idMesa = data.id_mesa || null;
+  if (!idMesa && data.asignar_mesa_automatica !== false) {
+    try {
+      const mesasDisponibles = await Mesa.findAvailableMesas(
+        data.fecha_reserva,
+        data.hora_inicio,
+        horaFin,
+        data.numero_personas
+      );
+      
+      if (mesasDisponibles.length > 0) {
+        // Elegir la mesa con capacidad más cercana (pero suficiente)
+        idMesa = mesasDisponibles[0].id_mesa;
+      }
+    } catch (error) {
+      console.error('Error en asignación automática de mesa:', error);
+      // Continuar sin mesa asignada si hay error
+    }
+  }
+
   // Crear la reserva
   const reserva = await Reserva.create({
     id_cliente: cliente.id_cliente,
-    id_mesa: data.id_mesa || null,
+    id_mesa: idMesa,
     fecha_reserva: data.fecha_reserva,
     hora_inicio: data.hora_inicio,
     hora_fin: horaFin,
@@ -167,6 +188,55 @@ exports.showForm = (req, res) => {
   res.render('reservar', { error: null, success: null, form: null });
 };
 
+// Función helper para obtener horarios alternativos
+async function obtenerHorariosAlternativos(fecha, horaSolicitada, numeroPersonas) {
+  const { validarHorarioAtencion, validarCapacidadTotal } = require('../utils/validaciones');
+  const config = await ConfiguracionRestaurante.getConfig();
+  const intervalo = config.intervalo_reservas || 30;
+  const horariosAlternativos = [];
+  
+  // Obtener horarios de atención para ese día
+  const fechaObj = new Date(fecha);
+  const diaSemana = fechaObj.getDay();
+  const horariosAtencion = await HorarioAtencion.findAll({
+    where: {
+      dia_semana: diaSemana,
+      activo: true
+    },
+    order: [['hora_apertura', 'ASC']]
+  });
+  
+  if (horariosAtencion.length === 0) {
+    return [];
+  }
+  
+  // Generar horarios alternativos en intervalos
+  for (const horario of horariosAtencion) {
+    const [aperturaH, aperturaM] = horario.hora_apertura.split(':').map(Number);
+    const [cierreH, cierreM] = horario.hora_cierre.split(':').map(Number);
+    const aperturaMinutos = aperturaH * 60 + aperturaM;
+    const cierreMinutos = cierreH * 60 + cierreM;
+    
+    // Generar horarios cada X minutos
+    for (let minutos = aperturaMinutos; minutos < cierreMinutos; minutos += intervalo) {
+      const hora = `${Math.floor(minutos / 60).toString().padStart(2, '0')}:${(minutos % 60).toString().padStart(2, '0')}`;
+      
+      // Verificar disponibilidad para este horario (solo validaciones básicas)
+      try {
+        await validarHorarioAtencion(fecha, hora);
+        await validarCapacidadTotal(fecha, hora, numeroPersonas);
+        horariosAlternativos.push(hora);
+        if (horariosAlternativos.length >= 5) break; // Máximo 5 alternativas
+      } catch (error) {
+        // Este horario no está disponible, continuar
+      }
+    }
+    if (horariosAlternativos.length >= 5) break;
+  }
+  
+  return horariosAlternativos;
+}
+
 // Crear reserva (público)
 exports.create = async (req, res) => {
   const { nombre, telefono, email, fecha, hora, numero_personas, observaciones } = req.body;
@@ -189,13 +259,27 @@ exports.create = async (req, res) => {
     });
 
     // Validar todas las reglas de negocio
-    await validarCrearReserva({
-      fecha_reserva: fecha,
-      hora_inicio: hora,
-      numero_personas: parseInt(numero_personas),
-      id_mesa: null, // No se asigna mesa automáticamente en reserva pública
-      id_cliente: cliente.id_cliente
-    });
+    try {
+      await validarCrearReserva({
+        fecha_reserva: fecha,
+        hora_inicio: hora,
+        numero_personas: parseInt(numero_personas),
+        id_mesa: null,
+        id_cliente: cliente.id_cliente
+      });
+    } catch (validationError) {
+      // Si no hay disponibilidad, ofrecer horarios alternativos
+      if (validationError.message.includes('capacidad') || validationError.message.includes('disponible')) {
+        const horariosAlt = await obtenerHorariosAlternativos(fecha, hora, parseInt(numero_personas));
+        return res.render('reservar', {
+          error: `No hay disponibilidad en el horario seleccionado. ${horariosAlt.length > 0 ? `Horarios alternativos disponibles: ${horariosAlt.join(', ')}` : 'No hay horarios alternativos disponibles.'}`,
+          success: null,
+          form: req.body,
+          horariosAlternativos: horariosAlt
+        });
+      }
+      throw validationError;
+    }
 
     const reserva = await createReserva({
       nombre_completo: nombre,
@@ -205,7 +289,8 @@ exports.create = async (req, res) => {
       hora_inicio: hora,
       numero_personas: parseInt(numero_personas),
       observaciones,
-      canal: 'web'
+      canal: 'web',
+      asignar_mesa_automatica: true // Intentar asignar mesa automáticamente
     });
 
     return res.render('reservar', {
@@ -240,7 +325,49 @@ exports.dashboard = async (req, res) => {
     const hoy = new Date().toISOString().split('T')[0];
     const reservas = await findByDate(hoy);
     const estadisticas = await getEstadisticasDia(hoy);
-    res.render('dashboard', { reservas, estadisticas, fecha: hoy });
+    
+    // Obtener todas las mesas para vista por mesa
+    const todasLasMesas = await Mesa.findAll({
+      where: { estado: 'activa' },
+      order: [['zona', 'ASC'], ['nombre', 'ASC']]
+    });
+    
+    // Organizar reservas por mesa
+    const reservasPorMesa = {};
+    todasLasMesas.forEach(mesa => {
+      reservasPorMesa[mesa.id_mesa] = {
+        mesa: mesa.toJSON(),
+        reservas: []
+      };
+    });
+    
+    // Agregar reservas sin mesa asignada
+    reservasPorMesa['sin_mesa'] = {
+      mesa: { id_mesa: null, nombre: 'Sin Mesa Asignada', zona: 'General', capacidad: 0 },
+      reservas: []
+    };
+    
+    reservas.forEach(reserva => {
+      const mesaId = reserva.id_mesa || 'sin_mesa';
+      if (reservasPorMesa[mesaId]) {
+        reservasPorMesa[mesaId].reservas.push(reserva);
+      }
+    });
+    
+    // Calcular capacidad ocupada vs disponible
+    const capacidadTotal = await Mesa.getTotalCapacity();
+    const capacidadOcupada = estadisticas.total_personas || 0;
+    const capacidadDisponible = capacidadTotal - capacidadOcupada;
+    
+    res.render('dashboard', { 
+      reservas, 
+      estadisticas, 
+      fecha: hoy,
+      reservasPorMesa: Object.values(reservasPorMesa),
+      capacidadTotal,
+      capacidadOcupada,
+      capacidadDisponible
+    });
   } catch (error) {
     console.error('Error en dashboard:', error);
     res.render('dashboard', { reservas: [], estadisticas: null, fecha: new Date().toISOString().split('T')[0], error: 'Error al cargar el dashboard' });
@@ -440,6 +567,51 @@ exports.update = async (req, res) => {
       mesas,
       clientes,
       error: error.message || 'Error al actualizar la reserva'
+    });
+  }
+};
+
+// Reagendar reserva (cambiar fecha y/o hora)
+exports.reagendar = async (req, res) => {
+  const { nueva_fecha, nueva_hora } = req.body;
+  const rolUsuario = req.session?.rol || 'recepcionista';
+
+  if (!nueva_fecha || !nueva_hora) {
+    const reserva = await findById(req.params.id);
+    const mesas = await findAllMesas();
+    const clientes = await findAllClientes();
+    return res.render('reservas/form', {
+      reserva,
+      mesas,
+      clientes,
+      error: 'Fecha y hora son requeridas para reagendar'
+    });
+  }
+
+  try {
+    // Usar la función de actualizar que ya valida todo
+    await validarActualizarReserva(req.params.id, {
+      fecha_reserva: nueva_fecha,
+      hora_inicio: nueva_hora
+    }, rolUsuario);
+
+    // Actualizar reserva
+    await updateReserva(req.params.id, {
+      fecha_reserva: nueva_fecha,
+      hora_inicio: nueva_hora
+    });
+
+    res.redirect(`/reservas/${req.params.id}`);
+  } catch (error) {
+    console.error('Error al reagendar reserva:', error);
+    const reserva = await findById(req.params.id);
+    const mesas = await findAllMesas();
+    const clientes = await findAllClientes();
+    res.render('reservas/form', {
+      reserva,
+      mesas,
+      clientes,
+      error: error.message || 'Error al reagendar la reserva'
     });
   }
 };

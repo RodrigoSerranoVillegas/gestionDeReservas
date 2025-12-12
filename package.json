@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "verificar-mysql": "node scripts/verificar-mysql.js",
+    "crear-db": "node scripts/crear-base-datos.js",
+    "test-horario": "node scripts/test-horario.js"
   },
   "repository": {
     "type": "git",

@@ -136,11 +136,44 @@ async function validarSolapamientoMesa(idMesa, fecha, horaInicio, duracionMinuto
  * Valida que la hora esté dentro del horario de atención
  */
 async function validarHorarioAtencion(fecha, hora) {
-  const horaValida = await HorarioAtencion.isHoraValida(fecha, hora);
-  if (!horaValida) {
-    throw new Error('La hora seleccionada no está dentro del horario de atención');
+  try {
+    const horaValida = await HorarioAtencion.isHoraValida(fecha, hora);
+    if (!horaValida) {
+      // Obtener información adicional para el mensaje de error
+      const fechaObj = new Date(fecha + 'T00:00:00');
+      const diaSemana = fechaObj.getDay();
+      const nombreDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
+      
+      const horarios = await HorarioAtencion.findAll({
+        where: {
+          dia_semana: diaSemana,
+          activo: true
+        },
+        order: [['hora_apertura', 'ASC']]
+      });
+      
+      if (horarios.length === 0) {
+        throw new Error(`No hay horario de atención configurado para ${nombreDia}`);
+      }
+      
+      const horariosStr = horarios.map(h => {
+        let apertura = h.hora_apertura;
+        let cierre = h.hora_cierre;
+        if (typeof apertura === 'string' && apertura.length > 5) apertura = apertura.substring(0, 5);
+        if (typeof cierre === 'string' && cierre.length > 5) cierre = cierre.substring(0, 5);
+        return `${apertura} - ${cierre}`;
+      }).join(', ');
+      
+      throw new Error(`La hora ${hora} no está dentro del horario de atención de ${nombreDia}. Horarios disponibles: ${horariosStr}`);
+    }
+    return true;
+  } catch (error) {
+    // Si el error ya tiene un mensaje personalizado, lanzarlo tal cual
+    if (error.message && !error.message.includes('query is not a function')) {
+      throw error;
+    }
+    throw new Error('Error al validar el horario de atención: ' + error.message);
   }
-  return true;
 }
 
 /**
@@ -236,7 +269,7 @@ async function validarCrearReserva(data, idReservaExcluir = null) {
     await validarCapacidadMesa(id_mesa, numPersonas);
   }
   
-  // 5. Validar reserva duplicada del mismo cliente
+  // 5. Validar reserva duplicada del mismo cliente (solo si se proporciona id_cliente)
   if (id_cliente) {
     await validarReservaDuplicada(id_cliente, fecha_reserva, hora_inicio, idReservaExcluir);
   }

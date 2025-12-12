@@ -1,19 +1,154 @@
 /* ===== CONTENEDOR GENERAL ===== */
 .reservas-container {
   min-height: 100vh;
-  padding: 3rem 2rem;
+  padding: 0;
   background: #faf7f2;
   font-family: "Poppins", sans-serif;
   -webkit-font-smoothing: antialiased;
   color: #333;
 }
 
-/* ===== TITULO ===== */
+/* ===== HEADER PÚBLICO ===== */
+.public-header {
+  background: #ffffff;
+  border-bottom: 2px solid #ece6df;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #3a2f28;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #3a2f28;
+}
+
+.btn-login {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #3a2f28;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+  background: #2a1f18;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(58, 47, 40, 0.3);
+}
+
+.btn-reservar {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #28a745;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-reservar:hover {
+  background: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.public-header .btn-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #dc3545;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.public-header .btn-logout:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* ===== HEADER ===== */
+.reservas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #ece6df;
+}
+
 .reservas-title {
   font-size: 2rem;
   font-weight: 600;
-  margin-bottom: 2rem;
+  margin: 0;
   color: #2b2b2b;
+}
+
+.btn-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: #3a2f28;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-volver:hover {
+  background: #2a1f18;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(58, 47, 40, 0.3);
+}
+
+/* ===== CONTENEDOR DE CONTENIDO ===== */
+.reservas-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 3rem 2rem;
 }
 
 /* ===== TARJETA ===== */

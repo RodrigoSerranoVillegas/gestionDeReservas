@@ -31,6 +31,7 @@ block content
       a.btn(href="/reservas") Volver a Lista
       a.btn(href=`/reservas/${reserva.id_reserva}/editar`) Editar
       if reserva.estado !== 'cancelada' && reserva.estado !== 'completada'
+        a.btn(href=`/reservas/${reserva.id_reserva}/editar`) Reagendar
         form.inline-form(method="POST" action=`/reservas/${reserva.id_reserva}/cancelar`)
           button.btn.btn-danger(type="submit") Cancelar Reserva
 

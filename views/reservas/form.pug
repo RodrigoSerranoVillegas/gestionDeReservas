@@ -5,7 +5,9 @@ block styles
 
 block content
   .container
-    h1 #{reserva ? 'Editar Reserva' : 'Nueva Reserva'}
+    .page-header
+      h1 #{reserva ? 'Editar Reserva' : 'Nueva Reserva'}
+      a.btn-volver(href=reserva ? `/reservas/${reserva.id_reserva}` : "/reservas") ← Volver
     
     if error
       .error #{error}

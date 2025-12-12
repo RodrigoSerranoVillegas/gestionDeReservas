@@ -6,10 +6,30 @@ block styles
 block content
   .reserva-container
     .reserva-card
-      h1 Reserva en línea
+      .reserva-header
+        h1 Reserva en línea
+        if user
+          a.btn-volver(href="/dashboard") ← Volver al Dashboard
+        else
+          a.btn-volver(href="/inicio") ← Volver
 
       if error
         .reserva-error #{error}
+        if horariosAlternativos && horariosAlternativos.length > 0
+          .horarios-alternativos
+            h3 Horarios Alternativos Disponibles:
+            ul
+              each horaAlt in horariosAlternativos
+                li
+                  form.inline-form(method="POST" action="/reservar" style="display: inline;")
+                    input(type="hidden" name="nombre" value=(form && form.nombre) || '')
+                    input(type="hidden" name="telefono" value=(form && form.telefono) || '')
+                    input(type="hidden" name="email" value=(form && form.email) || '')
+                    input(type="hidden" name="fecha" value=(form && form.fecha) || fecha || '')
+                    input(type="hidden" name="hora" value=horaAlt)
+                    input(type="hidden" name="numero_personas" value=(form && form.numero_personas) || numero_personas || 1)
+                    input(type="hidden" name="observaciones" value=(form && form.observaciones) || '')
+                    button.btn-small(type="submit") #{horaAlt}
       if success
         .reserva-success #{success}
 

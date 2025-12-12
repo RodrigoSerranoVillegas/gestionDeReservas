@@ -1,4 +1,4 @@
-const { findAll, findActive, createHorario, updateHorario, deleteHorario, findById } = require('../models/horario');
+const { HorarioAtencion } = require('../models');
 
 const DIAS_SEMANA = [
   { valor: 0, nombre: 'Domingo' },
@@ -13,13 +13,16 @@ const DIAS_SEMANA = [
 // Listar todos los horarios
 exports.list = async (req, res) => {
   try {
-    const horarios = await findAll();
+    const horarios = await HorarioAtencion.findAll({
+      order: [['dia_semana', 'ASC'], ['hora_apertura', 'ASC']]
+    });
     // Agregar nombre del día a cada horario
     const horariosConDia = horarios.map(horario => {
-      const dia = DIAS_SEMANA.find(d => d.valor == horario.dia_semana);
+      const horarioData = horario.toJSON ? horario.toJSON() : horario;
+      const dia = DIAS_SEMANA.find(d => d.valor == horarioData.dia_semana);
       return {
-        ...horario,
-        dia_nombre: dia ? dia.nombre : `Día ${horario.dia_semana}`
+        ...horarioData,
+        dia_nombre: dia ? dia.nombre : `Día ${horarioData.dia_semana}`
       };
     });
     res.render('horarios/list', { horarios: horariosConDia, diasSemana: DIAS_SEMANA });
@@ -47,7 +50,7 @@ exports.create = async (req, res) => {
   }
 
   try {
-    await createHorario({
+    await HorarioAtencion.create({
       dia_semana: parseInt(dia_semana),
       hora_apertura,
       hora_cierre,
@@ -59,7 +62,7 @@ exports.create = async (req, res) => {
     res.render('horarios/form', {
       horario: req.body,
       diasSemana: DIAS_SEMANA,
-      error: 'Error al crear el horario'
+      error: 'Error al crear el horario: ' + error.message
     });
   }
 };
@@ -67,11 +70,12 @@ exports.create = async (req, res) => {
 // Mostrar formulario de edición
 exports.showEdit = async (req, res) => {
   try {
-    const horario = await findById(req.params.id);
+    const horario = await HorarioAtencion.findByPk(req.params.id);
     if (!horario) {
       return res.status(404).send('Horario no encontrado');
     }
-    res.render('horarios/form', { horario, diasSemana: DIAS_SEMANA, error: null });
+    const horarioData = horario.toJSON ? horario.toJSON() : horario;
+    res.render('horarios/form', { horario: horarioData, diasSemana: DIAS_SEMANA, error: null });
   } catch (error) {
     console.error('Error al obtener horario:', error);
     res.status(500).send('Error al cargar el horario');
@@ -82,17 +86,22 @@ exports.showEdit = async (req, res) => {
 exports.update = async (req, res) => {
   const { dia_semana, hora_apertura, hora_cierre, activo } = req.body;
 
-  if (!dia_semana || !hora_apertura || !hora_cierre) {
-    const horario = await findById(req.params.id);
-    return res.render('horarios/form', {
-      horario: { ...horario, ...req.body },
-      diasSemana: DIAS_SEMANA,
-      error: 'Día, hora de apertura y hora de cierre son requeridos'
-    });
-  }
-
   try {
-    await updateHorario(req.params.id, {
+    const horario = await HorarioAtencion.findByPk(req.params.id);
+    if (!horario) {
+      return res.status(404).send('Horario no encontrado');
+    }
+
+    if (!dia_semana || !hora_apertura || !hora_cierre) {
+      const horarioData = horario.toJSON ? horario.toJSON() : horario;
+      return res.render('horarios/form', {
+        horario: { ...horarioData, ...req.body },
+        diasSemana: DIAS_SEMANA,
+        error: 'Día, hora de apertura y hora de cierre son requeridos'
+      });
+    }
+
+    await horario.update({
       dia_semana: parseInt(dia_semana),
       hora_apertura,
       hora_cierre,
@@ -101,23 +110,36 @@ exports.update = async (req, res) => {
     res.redirect('/horarios');
   } catch (error) {
     console.error('Error al actualizar horario:', error);
-    const horario = await findById(req.params.id);
-    res.render('horarios/form', {
-      horario: { ...horario, ...req.body },
-      diasSemana: DIAS_SEMANA,
-      error: 'Error al actualizar el horario'
-    });
+    try {
+      const horario = await HorarioAtencion.findByPk(req.params.id);
+      const horarioData = horario ? (horario.toJSON ? horario.toJSON() : horario) : req.body;
+      res.render('horarios/form', {
+        horario: { ...horarioData, ...req.body },
+        diasSemana: DIAS_SEMANA,
+        error: 'Error al actualizar el horario: ' + error.message
+      });
+    } catch (err) {
+      res.render('horarios/form', {
+        horario: req.body,
+        diasSemana: DIAS_SEMANA,
+        error: 'Error al actualizar el horario: ' + error.message
+      });
+    }
   }
 };
 
 // Eliminar horario
 exports.delete = async (req, res) => {
   try {
-    await deleteHorario(req.params.id);
+    const horario = await HorarioAtencion.findByPk(req.params.id);
+    if (!horario) {
+      return res.status(404).send('Horario no encontrado');
+    }
+    await horario.destroy();
     res.redirect('/horarios');
   } catch (error) {
     console.error('Error al eliminar horario:', error);
-    res.status(500).send('Error al eliminar el horario');
+    res.status(500).send('Error al eliminar el horario: ' + error.message);
   }
 };
 

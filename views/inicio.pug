@@ -5,28 +5,44 @@ block styles
 
 block content
   .reservas-container
-    h1.reservas-title Reservas registradas
-    if !reservas || reservas.length === 0
-      p No hay reservas todavía.
-    else
-      .reservas-card
-        table.reservas-table
-          thead
-            tr
-              th Código
-              th Fecha
-              th Hora
-              th Cliente
-              th Personas
-              th Estado
-              th Canal
-          tbody
-            each r in reservas
+    .public-header
+      .header-content
+        h1.header-title Sistema de Reservas
+        .header-actions
+          if user
+            .user-info-header
+              span Bienvenido, #{user.nombre}
+              a.btn-login(href="/dashboard") Dashboard
+              a.btn-logout(href="/logout") Cerrar Sesión
+          else
+            a.btn-login(href="/login") Iniciar Sesión
+            a.btn-reservar(href="/reservar") Hacer Reserva
+    
+    .reservas-content
+      .reservas-header
+        h1.reservas-title Reservas registradas
+        a.btn-volver(href="/reservar") ← Hacer Reserva
+      if !reservas || reservas.length === 0
+        p No hay reservas todavía.
+      else
+        .reservas-card
+          table.reservas-table
+            thead
               tr
-                td #{r.id_reserva}
-                td #{r.fecha_reserva}
-                td #{r.hora_inicio}
-                td #{r.cliente_nombre}
-                td #{r.numero_personas}
-                td #{r.estado}
-                td #{r.canal}
+                th Código
+                th Fecha
+                th Hora
+                th Cliente
+                th Personas
+                th Estado
+                th Canal
+            tbody
+              each r in reservas
+                tr
+                  td #{r.id_reserva}
+                  td #{r.fecha_reserva}
+                  td #{r.hora_inicio}
+                  td #{r.cliente_nombre}
+                  td #{r.numero_personas}
+                  td #{r.estado}
+                  td #{r.canal}
