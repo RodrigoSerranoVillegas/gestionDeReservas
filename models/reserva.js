@@ -56,6 +56,22 @@ const Reserva = sequelize.define('Reserva', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  // Campos de cliente almacenados directamente en la reserva (para usuarios no registrados)
+  cliente_nombre: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Nombre del cliente almacenado directamente en la reserva'
+  },
+  cliente_telefono: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Teléfono del cliente almacenado directamente en la reserva'
+  },
+  cliente_email: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Email del cliente almacenado directamente en la reserva'
+  },
   creado_por: {
     type: DataTypes.INTEGER,
     allowNull: true,

@@ -49,11 +49,11 @@ async function validarCapacidadMesa(idMesa, numeroPersonas) {
   }
   
   if (mesa.estado !== 'activa') {
-    throw new Error('La mesa seleccionada no está activa');
+    throw new Error(`La mesa "${mesa.nombre}" no está activa actualmente`);
   }
   
   if (numeroPersonas > mesa.capacidad) {
-    throw new Error(`El número de personas (${numeroPersonas}) excede la capacidad de la mesa (${mesa.capacidad})`);
+    throw new Error(`El número de personas solicitado (${numeroPersonas}) excede la capacidad de la mesa "${mesa.nombre}" (${mesa.capacidad} personas). Por favor, seleccione una mesa con mayor capacidad o reduzca el número de personas.`);
   }
   
   return true;
@@ -95,6 +95,12 @@ async function validarSolapamientoMesa(idMesa, fecha, horaInicio, duracionMinuto
     return true; // Si no hay mesa asignada, no se valida solapamiento
   }
   
+  // Obtener información de la mesa
+  const mesa = await Mesa.findByPk(idMesa);
+  if (!mesa) {
+    throw new Error('Mesa no encontrada');
+  }
+  
   const config = await ConfiguracionRestaurante.getConfig();
   const duracion = duracionMinutos || config.duracion_estandar_reserva;
   
@@ -113,7 +119,15 @@ async function validarSolapamientoMesa(idMesa, fecha, horaInicio, duracionMinuto
         [Op.notIn]: ['cancelada', 'no_show', 'completada']
       },
       ...(idReservaExcluir ? { id_reserva: { [Op.ne]: idReservaExcluir } } : {})
-    }
+    },
+    include: [
+      {
+        model: Cliente,
+        as: 'cliente',
+        attributes: ['nombre_completo'],
+        required: false
+      }
+    ]
   });
   
   // Verificar solapamiento manualmente
@@ -122,18 +136,24 @@ async function validarSolapamientoMesa(idMesa, fecha, horaInicio, duracionMinuto
     const rHoraInicioMinutos = rHoraH * 60 + rHoraM;
     
     let rHoraFinMinutos;
+    let rHoraFinStr;
     if (reserva.hora_fin) {
       const [rFinH, rFinM] = reserva.hora_fin.split(':').map(Number);
       rHoraFinMinutos = rFinH * 60 + rFinM;
+      rHoraFinStr = reserva.hora_fin.length > 5 ? reserva.hora_fin.substring(0, 5) : reserva.hora_fin;
     } else {
       // Si no tiene hora_fin, usar duración estándar
       rHoraFinMinutos = rHoraInicioMinutos + config.duracion_estandar_reserva;
+      rHoraFinStr = `${Math.floor(rHoraFinMinutos / 60).toString().padStart(2, '0')}:${(rHoraFinMinutos % 60).toString().padStart(2, '0')}`;
     }
+    
+    const rHoraInicioStr = reserva.hora_inicio.length > 5 ? reserva.hora_inicio.substring(0, 5) : reserva.hora_inicio;
     
     // Verificar si hay solapamiento
     // Solapamiento ocurre si: (inicio1 < fin2) && (fin1 > inicio2)
     if (horaInicioMinutos < rHoraFinMinutos && horaFinMinutos > rHoraInicioMinutos) {
-      throw new Error('La mesa ya tiene una reserva en ese horario');
+      const nombreCliente = reserva.cliente?.nombre_completo || reserva.cliente_nombre || 'Cliente';
+      throw new Error(`La mesa "${mesa.nombre}" (${mesa.zona}) ya está ocupada de ${rHoraInicioStr} a ${rHoraFinStr} por ${nombreCliente}. Por favor, seleccione otro horario u otra mesa.`);
     }
   }
   
@@ -325,6 +345,7 @@ async function validarCapacidadTotal(fecha, horaInicio, numeroPersonas, duracion
   
   // Validar que no se exceda la capacidad
   const capacidadNecesaria = personasReservadas + numeroPersonas;
+  const capacidadDisponible = capacidadTotal - personasReservadas;
   
   if (process.env.NODE_ENV === 'development') {
     console.log(`[DEBUG validarCapacidadTotal] Fecha: ${fecha}, Hora: ${horaNormalizada}, Personas: ${numeroPersonas}`);
@@ -332,7 +353,7 @@ async function validarCapacidadTotal(fecha, horaInicio, numeroPersonas, duracion
   }
   
   if (capacidadNecesaria > capacidadTotal) {
-    throw new Error(`No hay suficiente capacidad disponible. Capacidad total: ${capacidadTotal}, ya reservado: ${personasReservadas}, necesario: ${numeroPersonas}`);
+    throw new Error(`No hay suficiente capacidad disponible para ${numeroPersonas} personas a las ${horaNormalizada}. Capacidad total del restaurante: ${capacidadTotal} personas, ya reservado: ${personasReservadas} personas, disponible: ${capacidadDisponible} personas. Por favor, seleccione otro horario o reduzca el número de personas.`);
   }
   
   return true;

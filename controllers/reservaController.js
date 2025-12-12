@@ -3,13 +3,26 @@ const { validarCrearReserva, validarActualizarReserva, validarEdicionFechaPasada
 
 // Funciones helper
 async function createReserva(data) {
-  // Buscar o crear cliente
-  const cliente = await Cliente.findOrCreateCliente({
-    nombre_completo: data.nombre_completo,
-    telefono: data.telefono,
-    email: data.email,
-    notas: data.observaciones
-  });
+  // Si se proporciona id_cliente, usar cliente registrado
+  // Si no, almacenar datos directamente en la reserva (sin crear/actualizar cliente)
+  let idCliente = null;
+  let clienteNombre = null;
+  let clienteTelefono = null;
+  let clienteEmail = null;
+  
+  if (data.id_cliente) {
+    const cliente = await Cliente.findByPk(data.id_cliente);
+    if (!cliente) {
+      throw new Error('Cliente no encontrado');
+    }
+    idCliente = cliente.id_cliente;
+  } else {
+    // Para usuarios no registrados, almacenar datos directamente en la reserva
+    // NO crear ni actualizar cliente para evitar que se modifiquen reservas anteriores
+    clienteNombre = data.nombre_completo || null;
+    clienteTelefono = data.telefono || null;
+    clienteEmail = data.email || null;
+  }
 
   // Calcular hora_fin basada en duración estándar
   const config = await ConfiguracionRestaurante.getConfig();
@@ -42,7 +55,10 @@ async function createReserva(data) {
 
   // Crear la reserva
   const reserva = await Reserva.create({
-    id_cliente: cliente.id_cliente,
+    id_cliente: idCliente,
+    cliente_nombre: clienteNombre,
+    cliente_telefono: clienteTelefono,
+    cliente_email: clienteEmail,
     id_mesa: idMesa,
     fecha_reserva: data.fecha_reserva,
     hora_inicio: data.hora_inicio,
@@ -63,14 +79,23 @@ function formatReserva(reserva) {
   
   const reservaData = reserva.toJSON ? reserva.toJSON() : reserva;
   
-  // Aplanar relaciones para compatibilidad con vistas
-  if (reservaData.cliente) {
+  // Si hay cliente relacionado (id_cliente), usar sus datos
+  // Si no, usar los datos almacenados directamente en la reserva
+  if (reservaData.cliente && reservaData.id_cliente) {
+    // Cliente registrado - usar datos de la relación
     reservaData.cliente_nombre = reservaData.cliente.nombre_completo;
     reservaData.cliente_telefono = reservaData.cliente.telefono;
     reservaData.cliente_email = reservaData.cliente.email;
     // Preservar id_cliente si no está en el nivel principal
     if (!reservaData.id_cliente && reservaData.cliente.id_cliente) {
       reservaData.id_cliente = reservaData.cliente.id_cliente;
+    }
+  } else {
+    // Usuario no registrado - usar datos almacenados directamente en la reserva
+    // Los campos cliente_nombre, cliente_telefono, cliente_email ya están en reservaData
+    // Asegurar que id_cliente sea null para reservas sin cliente registrado
+    if (!reservaData.id_cliente) {
+      reservaData.id_cliente = null;
     }
   }
   
@@ -302,15 +327,8 @@ exports.create = async (req, res) => {
   }
 
   try {
-    // Buscar o crear cliente primero para obtener id_cliente
-    const cliente = await Cliente.findOrCreateCliente({
-      nombre_completo: nombre,
-      telefono,
-      email,
-      notas: observaciones
-    });
-
     // Validar todas las reglas de negocio
+    // Para usuarios no registrados, no pasamos id_cliente (será null)
     try {
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG create] Iniciando validación de reserva:');
@@ -324,7 +342,7 @@ exports.create = async (req, res) => {
         hora_inicio: hora,
         numero_personas: parseInt(numero_personas),
         id_mesa: null,
-        id_cliente: cliente.id_cliente
+        id_cliente: null // Usuario no registrado, no hay id_cliente
       });
       
       if (process.env.NODE_ENV === 'development') {
@@ -334,39 +352,98 @@ exports.create = async (req, res) => {
       console.error('[DEBUG create] Error de validación:', validationError.message);
       console.error('[DEBUG create] Stack:', validationError.stack);
       
-      // Si es error de horario de atención, mostrar mensaje específico
-      if (validationError.message.includes('horario de atención') || 
-          validationError.message.includes('no está dentro del horario') ||
-          validationError.message.includes('No hay horario de atención configurado')) {
+      const errorMessage = validationError.message;
+      
+      // Error de horario de atención
+      if (errorMessage.includes('horario de atención') || 
+          errorMessage.includes('no está dentro del horario') ||
+          errorMessage.includes('No hay horario de atención configurado')) {
         return res.render('reservar', {
-          error: validationError.message,
+          error: errorMessage,
           success: null,
           form: req.body,
           horariosAlternativos: []
         });
       }
       
-      // Si no hay disponibilidad (capacidad), ofrecer horarios alternativos
-      if (validationError.message.includes('capacidad') || 
-          validationError.message.includes('disponible') ||
-          validationError.message.includes('suficiente capacidad')) {
-        console.log('[DEBUG create] Error de capacidad, buscando horarios alternativos...');
+      // Error de mesa ocupada (solapamiento)
+      if (errorMessage.includes('ya está ocupada') || 
+          errorMessage.includes('ya tiene una reserva')) {
+        // El mensaje ya es específico, mostrarlo tal cual
+        return res.render('reservar', {
+          error: errorMessage,
+          success: null,
+          form: req.body,
+          horariosAlternativos: []
+        });
+      }
+      
+      // Error de capacidad de mesa específica
+      if (errorMessage.includes('excede la capacidad de la mesa')) {
+        return res.render('reservar', {
+          error: errorMessage,
+          success: null,
+          form: req.body,
+          horariosAlternativos: []
+        });
+      }
+      
+      // Error de capacidad total del restaurante
+      if (errorMessage.includes('No hay suficiente capacidad disponible') || 
+          errorMessage.includes('capacidad total') ||
+          errorMessage.includes('ya reservado')) {
+        console.log('[DEBUG create] Error de capacidad total, buscando horarios alternativos...');
         const horariosAlt = await obtenerHorariosAlternativos(fecha, hora, parseInt(numero_personas));
         console.log(`[DEBUG create] Horarios alternativos encontrados: ${horariosAlt.length}`);
+        
+        // Mostrar el mensaje específico de capacidad + horarios alternativos si existen
+        let mensajeError = errorMessage;
+        if (horariosAlt.length > 0) {
+          mensajeError += ` Horarios alternativos disponibles: ${horariosAlt.join(', ')}`;
+        }
+        
         return res.render('reservar', {
-          error: `No hay disponibilidad en el horario seleccionado. ${horariosAlt.length > 0 ? `Horarios alternativos disponibles: ${horariosAlt.join(', ')}` : 'No hay horarios alternativos disponibles.'}`,
+          error: mensajeError,
           success: null,
           form: req.body,
           horariosAlternativos: horariosAlt
         });
       }
       
+      // Error de fecha pasada
+      if (errorMessage.includes('fechas pasadas')) {
+        return res.render('reservar', {
+          error: errorMessage,
+          success: null,
+          form: req.body,
+          horariosAlternativos: []
+        });
+      }
+      
+      // Error de número de personas
+      if (errorMessage.includes('número de personas') || 
+          errorMessage.includes('debe ser mayor')) {
+        return res.render('reservar', {
+          error: errorMessage,
+          success: null,
+          form: req.body,
+          horariosAlternativos: []
+        });
+      }
+      
       // Para cualquier otro error, mostrar el mensaje original
-      console.error('[DEBUG create] Error no manejado específicamente:', validationError.message);
-      throw validationError;
+      console.error('[DEBUG create] Error no manejado específicamente:', errorMessage);
+      return res.render('reservar', {
+        error: errorMessage || 'Error al crear la reserva. Por favor, verifique los datos e intente nuevamente.',
+        success: null,
+        form: req.body,
+        horariosAlternativos: []
+      });
     }
 
+    // Crear reserva sin id_cliente - los datos se almacenarán directamente en la reserva
     const reserva = await createReserva({
+      id_cliente: null, // Usuario no registrado
       nombre_completo: nombre,
       telefono,
       email,
@@ -540,6 +617,7 @@ exports.createInternal = async (req, res) => {
 
     // Crear la reserva
     const reserva = await createReserva({
+      id_cliente: cliente.id_cliente, // Pasar el cliente ya obtenido
       nombre_completo: cliente.nombre_completo,
       telefono: cliente.telefono,
       email: cliente.email,
@@ -558,11 +636,16 @@ exports.createInternal = async (req, res) => {
     console.error('Error al crear reserva:', error);
     const mesas = await findAllMesas();
     const clientes = await findAllClientes();
+    
+    const errorMessage = error.message || 'Error al crear la reserva';
+    
+    // Los mensajes de error ya son específicos gracias a las mejoras en validaciones
+    // Solo asegurarnos de que se muestren correctamente
     res.render('reservas/form', {
       reserva: req.body,
       mesas,
       clientes,
-      error: error.message || 'Error al crear la reserva'
+      error: errorMessage
     });
   }
 };

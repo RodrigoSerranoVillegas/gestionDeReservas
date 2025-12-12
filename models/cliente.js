@@ -37,35 +37,38 @@ const Cliente = sequelize.define('Cliente', {
 Cliente.findOrCreateCliente = async function({ nombre_completo, telefono, email, notas }) {
   let cliente = null;
   
-  // Intentar encontrar por email o teléfono
-  if (email) {
-    cliente = await this.findOne({ where: { email } });
+  // Intentar encontrar por email o teléfono SOLO si tienen valor
+  // Esto evita coincidencias incorrectas con valores null/vacíos
+  if (email && email.trim() !== '') {
+    cliente = await this.findOne({ where: { email: email.trim() } });
   }
-  if (!cliente && telefono) {
-    cliente = await this.findOne({ where: { telefono } });
+  // Solo buscar por teléfono si no se encontró por email Y el teléfono tiene valor
+  if (!cliente && telefono && telefono.trim() !== '') {
+    cliente = await this.findOne({ where: { telefono: telefono.trim() } });
   }
   
   // Si no existe, crear uno nuevo
   if (!cliente) {
     cliente = await this.create({
       nombre_completo,
-      telefono: telefono || null,
-      email: email || null,
+      telefono: telefono && telefono.trim() !== '' ? telefono.trim() : null,
+      email: email && email.trim() !== '' ? email.trim() : null,
       notas: notas || null
     });
   } else {
-    // Actualizar datos si es necesario
+    // Actualizar datos si es necesario (solo si hay cambios reales)
     const updates = {};
-    if (nombre_completo && nombre_completo !== cliente.nombre_completo) {
-      updates.nombre_completo = nombre_completo;
+    if (nombre_completo && nombre_completo.trim() !== '' && nombre_completo.trim() !== cliente.nombre_completo) {
+      updates.nombre_completo = nombre_completo.trim();
     }
-    if (telefono && telefono !== cliente.telefono) {
-      updates.telefono = telefono;
+    if (telefono && telefono.trim() !== '' && telefono.trim() !== cliente.telefono) {
+      updates.telefono = telefono.trim();
     }
-    if (email && email !== cliente.email) {
-      updates.email = email;
+    if (email && email.trim() !== '' && email.trim() !== cliente.email) {
+      updates.email = email.trim();
     }
-    if (notas && notas !== cliente.notas) {
+    // Solo actualizar notas si se proporcionan y son diferentes
+    if (notas !== undefined && notas !== null && notas !== cliente.notas) {
       updates.notas = notas;
     }
     
