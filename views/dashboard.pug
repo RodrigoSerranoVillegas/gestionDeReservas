@@ -10,11 +10,11 @@ block content
         h1 Dashboard - Reservas del Día
         .user-info
           .user-greeting
-            span.user-icon 👤
+            span.user-icon 
             span.user-text Bienvenido, 
             span.user-name #{user.nombre}
             span.user-role (#{user.rol})
-          a.btn-logout(href="/logout") 🚪 Cerrar Sesión
+          a.btn-logout(href="/logout")  Cerrar Sesión
       
       .dashboard-nav
         if user.rol === 'admin'
