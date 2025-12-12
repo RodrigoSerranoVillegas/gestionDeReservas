@@ -185,11 +185,8 @@ async function findAllClientes() {
 
 // Mostrar formulario público de reserva
 exports.showForm = (req, res) => {
-  // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
-  // donde puede crear reservas desde la interfaz administrativa
-  if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
-    return res.redirect('/dashboard');
-  }
+  // Permitir que usuarios autenticados también accedan a la vista pública de reservas
+  // si lo desean (por ejemplo, para ver cómo se ve o hacer una reserva como cliente)
   res.render('reservar', { error: null, success: null, form: null });
 };
 
@@ -293,11 +290,8 @@ async function obtenerHorariosAlternativos(fecha, horaSolicitada, numeroPersonas
 exports.create = async (req, res) => {
   const { nombre, telefono, email, fecha, hora, numero_personas, observaciones } = req.body;
 
-  // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
-  // para crear reservas desde la interfaz administrativa
-  if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
-    return res.redirect('/dashboard');
-  }
+  // Permitir que usuarios autenticados también puedan crear reservas desde la vista pública
+  // pero después de crear exitosamente, redirigirlos al dashboard si están autenticados
 
   if (!nombre || !fecha || !hora || !numero_personas) {
     return res.render('reservar', {
@@ -384,16 +378,15 @@ exports.create = async (req, res) => {
       asignar_mesa_automatica: true // Intentar asignar mesa automáticamente
     });
 
-    // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
+    // Si el usuario está autenticado (admin o recepcionista), redirigir al listado de reservas
+    // para que pueda ver la reserva que acaba de crear
     if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
-      return res.redirect('/dashboard');
+      return res.redirect('/reservas');
     }
 
-    return res.render('reservar', {
-      success: `Reserva creada exitosamente. Código: ${reserva.id_reserva}`,
-      error: null,
-      form: null
-    });
+    // Si el usuario no está autenticado, redirigir a la vista pública (inicio)
+    // donde puede ver todas las reservas
+    return res.redirect('/inicio');
   } catch (error) {
     console.error('Error al crear reserva:', error);
     return res.render('reservar', {
@@ -406,11 +399,8 @@ exports.create = async (req, res) => {
 
 // Listar reservas (público - solo muestra)
 exports.list = async (req, res) => {
-  // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
-  if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
-    return res.redirect('/dashboard');
-  }
-  
+  // Permitir que usuarios autenticados también vean la vista pública si lo desean
+  // pero mostrar un mensaje o botón para ir al dashboard
   try {
     const reservas = await findAll();
     res.render('inicio', { reservas });

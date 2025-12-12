@@ -29,8 +29,16 @@ block content
       if estadisticas
         .stats-container
           .stat-card
-            h3 Total Reservas
+            h3 Total del Día
             p.stat-number #{estadisticas.total || 0}
+            p.stat-label(style="font-size: 0.75rem; margin-top: 5px; color: #666;") Todas las reservas
+          .stat-card
+            h3 Activas
+            p.stat-number #{estadisticas.total_activas || 0}
+            p.stat-label(style="font-size: 0.75rem; margin-top: 5px; color: #28a745;") Pendiente + Confirmada + En Curso
+          .stat-card
+            h3 Pendientes
+            p.stat-number #{estadisticas.pendientes || 0}
           .stat-card
             h3 Confirmadas
             p.stat-number #{estadisticas.confirmadas || 0}
@@ -49,6 +57,7 @@ block content
           .stat-card
             h3 Total Personas
             p.stat-number #{estadisticas.total_personas || 0}
+            p.stat-label(style="font-size: 0.75rem; margin-top: 5px; color: #666;") De reservas activas
           if capacidadTotal
             .stat-card
               h3 Capacidad

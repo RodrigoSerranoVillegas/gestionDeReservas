@@ -95,7 +95,10 @@ Reserva.findByDateWithRelations = async function(fecha) {
 Reserva.getEstadisticasDia = async function(fecha) {
   const { Op } = require('sequelize');
   
-  const total = await this.count({ where: { fecha_reserva: fecha } });
+  // Contar por estado
+  const pendientes = await this.count({ 
+    where: { fecha_reserva: fecha, estado: 'pendiente' } 
+  });
   const confirmadas = await this.count({ 
     where: { fecha_reserva: fecha, estado: 'confirmada' } 
   });
@@ -112,18 +115,38 @@ Reserva.getEstadisticasDia = async function(fecha) {
     where: { fecha_reserva: fecha, estado: 'no_show' } 
   });
   
+  // Total de todas las reservas del día
+  const total = await this.count({ where: { fecha_reserva: fecha } });
+  
+  // Total de reservas activas (pendiente + confirmada + en_curso)
+  const total_activas = pendientes + confirmadas + en_curso;
+  
+  // Total de personas solo de reservas activas (no canceladas ni no_shows)
+  const totalPersonasActivas = await this.sum('numero_personas', {
+    where: { 
+      fecha_reserva: fecha,
+      estado: {
+        [Op.in]: ['pendiente', 'confirmada', 'en_curso', 'completada']
+      }
+    }
+  });
+  
+  // Total de personas de todas las reservas (para referencia)
   const totalPersonas = await this.sum('numero_personas', {
     where: { fecha_reserva: fecha }
   });
   
   return {
     total: total || 0,
+    total_activas: total_activas || 0,
+    pendientes: pendientes || 0,
     confirmadas: confirmadas || 0,
     en_curso: en_curso || 0,
     completadas: completadas || 0,
     canceladas: canceladas || 0,
     no_shows: no_shows || 0,
-    total_personas: totalPersonas || 0
+    total_personas: totalPersonasActivas || 0, // Solo personas de reservas activas
+    total_personas_todas: totalPersonas || 0 // Todas las personas (incluyendo canceladas)
   };
 };
 
