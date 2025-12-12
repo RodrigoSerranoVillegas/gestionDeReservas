@@ -268,8 +268,23 @@ exports.create = async (req, res) => {
         id_cliente: cliente.id_cliente
       });
     } catch (validationError) {
-      // Si no hay disponibilidad, ofrecer horarios alternativos
-      if (validationError.message.includes('capacidad') || validationError.message.includes('disponible')) {
+      console.error('[DEBUG] Error de validación:', validationError.message);
+      
+      // Si es error de horario de atención, mostrar mensaje específico
+      if (validationError.message.includes('horario de atención') || 
+          validationError.message.includes('no está dentro del horario')) {
+        return res.render('reservar', {
+          error: validationError.message,
+          success: null,
+          form: req.body,
+          horariosAlternativos: []
+        });
+      }
+      
+      // Si no hay disponibilidad (capacidad), ofrecer horarios alternativos
+      if (validationError.message.includes('capacidad') || 
+          validationError.message.includes('disponible') ||
+          validationError.message.includes('suficiente capacidad')) {
         const horariosAlt = await obtenerHorariosAlternativos(fecha, hora, parseInt(numero_personas));
         return res.render('reservar', {
           error: `No hay disponibilidad en el horario seleccionado. ${horariosAlt.length > 0 ? `Horarios alternativos disponibles: ${horariosAlt.join(', ')}` : 'No hay horarios alternativos disponibles.'}`,
@@ -278,6 +293,8 @@ exports.create = async (req, res) => {
           horariosAlternativos: horariosAlt
         });
       }
+      
+      // Para cualquier otro error, mostrar el mensaje original
       throw validationError;
     }
 

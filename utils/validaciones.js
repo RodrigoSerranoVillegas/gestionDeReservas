@@ -3,14 +3,22 @@ const { Op } = require('sequelize');
 
 /**
  * Valida que la fecha de reserva no sea en el pasado
+ * Usa UTC para evitar problemas de zona horaria
  */
 function validarFechaNoPasado(fecha) {
-  const fechaReserva = new Date(fecha);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  fechaReserva.setHours(0, 0, 0, 0);
+  // Normalizar la fecha (puede venir como string YYYY-MM-DD o con hora)
+  const fechaStr = fecha.includes('T') ? fecha.split('T')[0] : fecha;
+  const [anio, mes, dia] = fechaStr.split('-').map(Number);
   
-  if (fechaReserva < hoy) {
+  // Crear fecha de reserva en UTC (medianoche UTC)
+  const fechaReserva = new Date(Date.UTC(anio, mes - 1, dia));
+  
+  // Crear fecha de hoy en UTC (medianoche UTC)
+  const hoy = new Date();
+  const hoyUTC = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+  
+  // Comparar fechas en UTC
+  if (fechaReserva < hoyUTC) {
     throw new Error('No se pueden crear reservas para fechas pasadas');
   }
   return true;
@@ -137,11 +145,45 @@ async function validarSolapamientoMesa(idMesa, fecha, horaInicio, duracionMinuto
  */
 async function validarHorarioAtencion(fecha, hora) {
   try {
-    const horaValida = await HorarioAtencion.isHoraValida(fecha, hora);
+    // Normalizar la hora (puede venir en diferentes formatos)
+    let horaNormalizada = hora;
+    if (typeof hora === 'string') {
+      // Si viene con "p. m." o "a. m.", convertir a formato 24 horas
+      if (hora.toLowerCase().includes('p. m.') || hora.toLowerCase().includes('pm')) {
+        const match = hora.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          let horas = parseInt(match[1]);
+          const minutos = match[2];
+          if (horas !== 12) horas += 12;
+          horaNormalizada = `${horas.toString().padStart(2, '0')}:${minutos}`;
+        }
+      } else if (hora.toLowerCase().includes('a. m.') || hora.toLowerCase().includes('am')) {
+        const match = hora.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          let horas = parseInt(match[1]);
+          const minutos = match[2];
+          if (horas === 12) horas = 0;
+          horaNormalizada = `${horas.toString().padStart(2, '0')}:${minutos}`;
+        }
+      }
+      // Remover espacios y normalizar
+      horaNormalizada = horaNormalizada.trim();
+      if (horaNormalizada.length > 5) {
+        horaNormalizada = horaNormalizada.substring(0, 5);
+      }
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEBUG validarHorarioAtencion] Fecha: ${fecha}, Hora original: ${hora}, Hora normalizada: ${horaNormalizada}`);
+    }
+    
+    const horaValida = await HorarioAtencion.isHoraValida(fecha, horaNormalizada);
     if (!horaValida) {
-      // Obtener información adicional para el mensaje de error
-      const fechaObj = new Date(fecha + 'T00:00:00');
-      const diaSemana = fechaObj.getDay();
+      // Obtener información adicional para el mensaje de error usando UTC
+      const fechaStr = fecha.includes('T') ? fecha.split('T')[0] : fecha;
+      const [anio, mes, dia] = fechaStr.split('-').map(Number);
+      const fechaObj = new Date(Date.UTC(anio, mes - 1, dia));
+      const diaSemana = fechaObj.getUTCDay();
       const nombreDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
       
       const horarios = await HorarioAtencion.findAll({
@@ -164,7 +206,7 @@ async function validarHorarioAtencion(fecha, hora) {
         return `${apertura} - ${cierre}`;
       }).join(', ');
       
-      throw new Error(`La hora ${hora} no está dentro del horario de atención de ${nombreDia}. Horarios disponibles: ${horariosStr}`);
+      throw new Error(`La hora ${horaNormalizada} no está dentro del horario de atención de ${nombreDia}. Horarios disponibles: ${horariosStr}`);
     }
     return true;
   } catch (error) {
@@ -178,14 +220,22 @@ async function validarHorarioAtencion(fecha, hora) {
 
 /**
  * Valida que no se editen reservas de fechas pasadas (excepto admin)
+ * Usa UTC para evitar problemas de zona horaria
  */
 function validarEdicionFechaPasada(fechaReserva, rolUsuario) {
-  const fecha = new Date(fechaReserva);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  fecha.setHours(0, 0, 0, 0);
+  // Normalizar la fecha (puede venir como string YYYY-MM-DD o con hora)
+  const fechaStr = fechaReserva.includes('T') ? fechaReserva.split('T')[0] : fechaReserva;
+  const [anio, mes, dia] = fechaStr.split('-').map(Number);
   
-  if (fecha < hoy && rolUsuario !== 'admin') {
+  // Crear fecha de reserva en UTC (medianoche UTC)
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+  
+  // Crear fecha de hoy en UTC (medianoche UTC)
+  const hoy = new Date();
+  const hoyUTC = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+  
+  // Comparar fechas en UTC
+  if (fecha < hoyUTC && rolUsuario !== 'admin') {
     throw new Error('No se pueden editar reservas de fechas pasadas');
   }
   

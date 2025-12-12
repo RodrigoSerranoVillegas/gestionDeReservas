@@ -45,10 +45,35 @@ function normalizarHora(hora) {
     return hora.toTimeString().substring(0, 5);
   }
   
-  // Si es string, tomar solo HH:MM
+  // Si es string, normalizar
   if (typeof hora === 'string') {
+    let horaNormalizada = hora.trim();
+    
+    // Si viene con "p. m." o "pm", convertir a formato 24 horas
+    if (horaNormalizada.toLowerCase().includes('p. m.') || horaNormalizada.toLowerCase().includes('pm')) {
+      const match = horaNormalizada.match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        let horas = parseInt(match[1]);
+        const minutos = match[2];
+        if (horas !== 12) horas += 12;
+        horaNormalizada = `${horas.toString().padStart(2, '0')}:${minutos}`;
+      }
+    } else if (horaNormalizada.toLowerCase().includes('a. m.') || horaNormalizada.toLowerCase().includes('am')) {
+      const match = horaNormalizada.match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        let horas = parseInt(match[1]);
+        const minutos = match[2];
+        if (horas === 12) horas = 0;
+        horaNormalizada = `${horas.toString().padStart(2, '0')}:${minutos}`;
+      }
+    }
+    
     // Remover segundos si existen (HH:MM:SS -> HH:MM)
-    return hora.length > 5 ? hora.substring(0, 5) : hora;
+    if (horaNormalizada.length > 5) {
+      horaNormalizada = horaNormalizada.substring(0, 5);
+    }
+    
+    return horaNormalizada;
   }
   
   return hora.toString().substring(0, 5);
