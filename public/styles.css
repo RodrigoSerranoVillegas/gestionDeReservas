@@ -115,12 +115,15 @@
   transform: translateY(-2px);
 }
 
+
+
 /* ====== FOOTER ====== */
 .auth-footer {
   text-align: center;
   margin-top: 30px;
   font-size: .9rem;
   color: #6f6c6b;
+  
 }
 
 .auth-footer a {
