@@ -70,28 +70,37 @@ exports.showEdit = async (req, res) => {
 exports.update = async (req, res) => {
   const { nombre, email, rol, estado } = req.body;
 
-  if (!nombre || !email) {
-    const usuario = await findById(req.params.id);
-    return res.render('usuarios/form', {
-      usuario: { ...usuario, ...req.body },
-      error: 'Nombre y email son requeridos'
-    });
-  }
-
   try {
     const usuario = await Usuario.findByPk(req.params.id);
     if (!usuario) {
       return res.status(404).send('Usuario no encontrado');
     }
+
+    if (!nombre || !email) {
+      const usuarioData = usuario.toJSON ? usuario.toJSON() : usuario;
+      return res.render('usuarios/form', {
+        usuario: { ...usuarioData, ...req.body },
+        error: 'Nombre y email son requeridos'
+      });
+    }
+
     await usuario.update({ nombre, email, rol, estado });
     res.redirect('/usuarios');
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
-    const usuario = await Usuario.findByIdSafe(req.params.id);
-    res.render('usuarios/form', {
-      usuario: { ...usuario.toJSON(), ...req.body },
-      error: error.message || 'Error al actualizar el usuario'
-    });
+    try {
+      const usuario = await Usuario.findByIdSafe(req.params.id);
+      const usuarioData = usuario ? (usuario.toJSON ? usuario.toJSON() : usuario) : req.body;
+      res.render('usuarios/form', {
+        usuario: { ...usuarioData, ...req.body },
+        error: error.message || 'Error al actualizar el usuario'
+      });
+    } catch (err) {
+      res.render('usuarios/form', {
+        usuario: req.body,
+        error: error.message || 'Error al actualizar el usuario'
+      });
+    }
   }
 };
 

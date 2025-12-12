@@ -185,19 +185,45 @@ async function findAllClientes() {
 
 // Mostrar formulario público de reserva
 exports.showForm = (req, res) => {
+  // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
+  // donde puede crear reservas desde la interfaz administrativa
+  if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
+    return res.redirect('/dashboard');
+  }
   res.render('reservar', { error: null, success: null, form: null });
 };
 
-// Función helper para obtener horarios alternativos
+// Función helper para normalizar hora desde horario de atención
+function normalizarHoraDesdeHorario(hora) {
+  if (!hora) return null;
+  
+  // Si es un objeto Date, convertir a string
+  if (hora instanceof Date) {
+    return hora.toTimeString().substring(0, 5);
+  }
+  
+  // Si es string, tomar solo HH:MM
+  if (typeof hora === 'string') {
+    // Remover segundos si existen (HH:MM:SS -> HH:MM)
+    return hora.length > 5 ? hora.substring(0, 5) : hora;
+  }
+  
+  return hora.toString().substring(0, 5);
+}
+
+// Función helper para obtener horarios alternativos (exportada para uso en scripts de prueba)
 async function obtenerHorariosAlternativos(fecha, horaSolicitada, numeroPersonas) {
   const { validarHorarioAtencion, validarCapacidadTotal } = require('../utils/validaciones');
   const config = await ConfiguracionRestaurante.getConfig();
   const intervalo = config.intervalo_reservas || 30;
   const horariosAlternativos = [];
   
-  // Obtener horarios de atención para ese día
-  const fechaObj = new Date(fecha);
-  const diaSemana = fechaObj.getDay();
+  // Obtener horarios de atención para ese día usando UTC
+  const fechaStr = fecha.includes('T') ? fecha.split('T')[0] : fecha;
+  const [anio, mes, dia] = fechaStr.split('-').map(Number);
+  const fechaObj = new Date(Date.UTC(anio, mes - 1, dia));
+  const diaSemana = fechaObj.getUTCDay();
+  
   const horariosAtencion = await HorarioAtencion.findAll({
     where: {
       dia_semana: diaSemana,
@@ -207,13 +233,29 @@ async function obtenerHorariosAlternativos(fecha, horaSolicitada, numeroPersonas
   });
   
   if (horariosAtencion.length === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEBUG obtenerHorariosAlternativos] No hay horarios activos para día ${diaSemana}`);
+    }
     return [];
   }
   
   // Generar horarios alternativos en intervalos
   for (const horario of horariosAtencion) {
-    const [aperturaH, aperturaM] = horario.hora_apertura.split(':').map(Number);
-    const [cierreH, cierreM] = horario.hora_cierre.split(':').map(Number);
+    // Normalizar horas del horario
+    const horaApertura = normalizarHoraDesdeHorario(horario.hora_apertura);
+    const horaCierre = normalizarHoraDesdeHorario(horario.hora_cierre);
+    
+    if (!horaApertura || !horaCierre) {
+      continue; // Saltar si no se puede normalizar
+    }
+    
+    const [aperturaH, aperturaM] = horaApertura.split(':').map(Number);
+    const [cierreH, cierreM] = horaCierre.split(':').map(Number);
+    
+    if (isNaN(aperturaH) || isNaN(aperturaM) || isNaN(cierreH) || isNaN(cierreM)) {
+      continue; // Saltar si hay error al parsear
+    }
+    
     const aperturaMinutos = aperturaH * 60 + aperturaM;
     const cierreMinutos = cierreH * 60 + cierreM;
     
@@ -226,12 +268,22 @@ async function obtenerHorariosAlternativos(fecha, horaSolicitada, numeroPersonas
         await validarHorarioAtencion(fecha, hora);
         await validarCapacidadTotal(fecha, hora, numeroPersonas);
         horariosAlternativos.push(hora);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[DEBUG obtenerHorariosAlternativos] Horario alternativo válido: ${hora}`);
+        }
         if (horariosAlternativos.length >= 5) break; // Máximo 5 alternativas
       } catch (error) {
         // Este horario no está disponible, continuar
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[DEBUG obtenerHorariosAlternativos] Horario ${hora} no disponible: ${error.message}`);
+        }
       }
     }
     if (horariosAlternativos.length >= 5) break;
+  }
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEBUG obtenerHorariosAlternativos] Total horarios alternativos encontrados: ${horariosAlternativos.length}`);
   }
   
   return horariosAlternativos;
@@ -240,6 +292,12 @@ async function obtenerHorariosAlternativos(fecha, horaSolicitada, numeroPersonas
 // Crear reserva (público)
 exports.create = async (req, res) => {
   const { nombre, telefono, email, fecha, hora, numero_personas, observaciones } = req.body;
+
+  // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
+  // para crear reservas desde la interfaz administrativa
+  if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
+    return res.redirect('/dashboard');
+  }
 
   if (!nombre || !fecha || !hora || !numero_personas) {
     return res.render('reservar', {
@@ -260,6 +318,13 @@ exports.create = async (req, res) => {
 
     // Validar todas las reglas de negocio
     try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEBUG create] Iniciando validación de reserva:');
+        console.log(`  Fecha: ${fecha}`);
+        console.log(`  Hora: ${hora}`);
+        console.log(`  Personas: ${numero_personas}`);
+      }
+      
       await validarCrearReserva({
         fecha_reserva: fecha,
         hora_inicio: hora,
@@ -267,12 +332,18 @@ exports.create = async (req, res) => {
         id_mesa: null,
         id_cliente: cliente.id_cliente
       });
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEBUG create] Validación exitosa, creando reserva...');
+      }
     } catch (validationError) {
-      console.error('[DEBUG] Error de validación:', validationError.message);
+      console.error('[DEBUG create] Error de validación:', validationError.message);
+      console.error('[DEBUG create] Stack:', validationError.stack);
       
       // Si es error de horario de atención, mostrar mensaje específico
       if (validationError.message.includes('horario de atención') || 
-          validationError.message.includes('no está dentro del horario')) {
+          validationError.message.includes('no está dentro del horario') ||
+          validationError.message.includes('No hay horario de atención configurado')) {
         return res.render('reservar', {
           error: validationError.message,
           success: null,
@@ -285,7 +356,9 @@ exports.create = async (req, res) => {
       if (validationError.message.includes('capacidad') || 
           validationError.message.includes('disponible') ||
           validationError.message.includes('suficiente capacidad')) {
+        console.log('[DEBUG create] Error de capacidad, buscando horarios alternativos...');
         const horariosAlt = await obtenerHorariosAlternativos(fecha, hora, parseInt(numero_personas));
+        console.log(`[DEBUG create] Horarios alternativos encontrados: ${horariosAlt.length}`);
         return res.render('reservar', {
           error: `No hay disponibilidad en el horario seleccionado. ${horariosAlt.length > 0 ? `Horarios alternativos disponibles: ${horariosAlt.join(', ')}` : 'No hay horarios alternativos disponibles.'}`,
           success: null,
@@ -295,6 +368,7 @@ exports.create = async (req, res) => {
       }
       
       // Para cualquier otro error, mostrar el mensaje original
+      console.error('[DEBUG create] Error no manejado específicamente:', validationError.message);
       throw validationError;
     }
 
@@ -309,6 +383,11 @@ exports.create = async (req, res) => {
       canal: 'web',
       asignar_mesa_automatica: true // Intentar asignar mesa automáticamente
     });
+
+    // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
+    if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
+      return res.redirect('/dashboard');
+    }
 
     return res.render('reservar', {
       success: `Reserva creada exitosamente. Código: ${reserva.id_reserva}`,
@@ -327,6 +406,11 @@ exports.create = async (req, res) => {
 
 // Listar reservas (público - solo muestra)
 exports.list = async (req, res) => {
+  // Si el usuario está autenticado (admin o recepcionista), redirigir al dashboard
+  if (req.session.userId && (req.session.rol === 'admin' || req.session.rol === 'recepcionista')) {
+    return res.redirect('/dashboard');
+  }
+  
   try {
     const reservas = await findAll();
     res.render('inicio', { reservas });

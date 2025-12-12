@@ -21,7 +21,10 @@ block content
     .reservas-content
       .reservas-header
         h1.reservas-title Reservas registradas
-        a.btn-volver(href="/reservar") ← Hacer Reserva
+        if user
+          a.btn-volver(href="/dashboard") ← Ir al Dashboard
+        else
+          a.btn-volver(href="/reservar") ← Hacer Reserva
       if !reservas || reservas.length === 0
         p No hay reservas todavía.
       else

@@ -56,12 +56,18 @@ app.use('/usuarios', usuarioRoutes);
 app.get('/', (req, res) => res.redirect('/inicio'));
 
 // Sincronizar modelos con la base de datos (solo en desarrollo)
+// Usar alter: false para evitar problemas con tablas existentes que tienen muchos índices
 if (process.env.NODE_ENV !== 'production') {
-  sequelize.sync({ alter: true }).then(() => {
-    console.log('Modelos sincronizados con la base de datos');
+  sequelize.sync({ alter: false }).then(() => {
+    console.log('✅ Modelos sincronizados con la base de datos');
   }).catch(err => {
-    console.error('Error al sincronizar modelos:', err);
-    console.error('Si el error es sobre columnas faltantes, ejecuta el script migrations/add_reset_password_fields.sql');
+    console.error('❌ Error al sincronizar modelos:', err.message);
+    if (err.message.includes('Too many keys')) {
+      console.error('\n⚠️  La tabla tiene demasiados índices. Esto es normal si la tabla ya existe.');
+      console.error('💡 Si necesitas agregar columnas nuevas, usa migraciones manuales o ejecuta SQL directamente.');
+    } else {
+      console.error('Si el error es sobre columnas faltantes, ejecuta el script migrations/add_reset_password_fields.sql');
+    }
   });
 }
 

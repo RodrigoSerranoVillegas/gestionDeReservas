@@ -30,7 +30,7 @@ exports.create = async (req, res) => {
   }
 
   try {
-    await createMesa({
+    await Mesa.create({
       nombre,
       capacidad: parseInt(capacidad),
       zona,
@@ -41,7 +41,7 @@ exports.create = async (req, res) => {
     console.error('Error al crear mesa:', error);
     res.render('mesas/form', {
       mesa: req.body,
-      error: 'Error al crear la mesa'
+      error: 'Error al crear la mesa: ' + error.message
     });
   }
 };
@@ -49,11 +49,12 @@ exports.create = async (req, res) => {
 // Mostrar formulario de edición
 exports.showEdit = async (req, res) => {
   try {
-    const mesa = await findById(req.params.id);
+    const mesa = await Mesa.findByPk(req.params.id);
     if (!mesa) {
       return res.status(404).send('Mesa no encontrada');
     }
-    res.render('mesas/form', { mesa, error: null });
+    const mesaData = mesa.toJSON ? mesa.toJSON() : mesa;
+    res.render('mesas/form', { mesa: mesaData, error: null });
   } catch (error) {
     console.error('Error al obtener mesa:', error);
     res.status(500).send('Error al cargar la mesa');
@@ -64,40 +65,57 @@ exports.showEdit = async (req, res) => {
 exports.update = async (req, res) => {
   const { nombre, capacidad, zona, estado } = req.body;
 
-  if (!nombre || !capacidad || !zona) {
-    const mesa = await findById(req.params.id);
-    return res.render('mesas/form', {
-      mesa: { ...mesa, ...req.body },
-      error: 'Nombre, capacidad y zona son requeridos'
-    });
-  }
-
   try {
-    await updateMesa(req.params.id, {
+    const mesa = await Mesa.findByPk(req.params.id);
+    if (!mesa) {
+      return res.status(404).send('Mesa no encontrada');
+    }
+
+    if (!nombre || !capacidad || !zona) {
+      const mesaData = mesa.toJSON ? mesa.toJSON() : mesa;
+      return res.render('mesas/form', {
+        mesa: { ...mesaData, ...req.body },
+        error: 'Nombre, capacidad y zona son requeridos'
+      });
+    }
+
+    await mesa.update({
       nombre,
       capacidad: parseInt(capacidad),
       zona,
-      estado
+      estado: estado || 'activa'
     });
     res.redirect('/mesas');
   } catch (error) {
     console.error('Error al actualizar mesa:', error);
-    const mesa = await findById(req.params.id);
-    res.render('mesas/form', {
-      mesa: { ...mesa, ...req.body },
-      error: 'Error al actualizar la mesa'
-    });
+    try {
+      const mesa = await Mesa.findByPk(req.params.id);
+      const mesaData = mesa ? (mesa.toJSON ? mesa.toJSON() : mesa) : req.body;
+      res.render('mesas/form', {
+        mesa: { ...mesaData, ...req.body },
+        error: 'Error al actualizar la mesa: ' + error.message
+      });
+    } catch (err) {
+      res.render('mesas/form', {
+        mesa: req.body,
+        error: 'Error al actualizar la mesa: ' + error.message
+      });
+    }
   }
 };
 
 // Eliminar mesa
 exports.delete = async (req, res) => {
   try {
-    await deleteMesa(req.params.id);
+    const mesa = await Mesa.findByPk(req.params.id);
+    if (!mesa) {
+      return res.status(404).send('Mesa no encontrada');
+    }
+    await mesa.destroy();
     res.redirect('/mesas');
   } catch (error) {
     console.error('Error al eliminar mesa:', error);
-    res.status(500).send('Error al eliminar la mesa');
+    res.status(500).send('Error al eliminar la mesa: ' + error.message);
   }
 };
 

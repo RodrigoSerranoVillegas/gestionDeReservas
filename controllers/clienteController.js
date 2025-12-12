@@ -56,19 +56,20 @@ exports.showEdit = async (req, res) => {
 exports.update = async (req, res) => {
   const { nombre_completo, telefono, email, notas } = req.body;
 
-  if (!nombre_completo) {
-    const cliente = await findById(req.params.id);
-    return res.render('clientes/form', {
-      cliente: { ...cliente, ...req.body },
-      error: 'El nombre completo es requerido'
-    });
-  }
-
   try {
     const cliente = await Cliente.findByPk(req.params.id);
     if (!cliente) {
       return res.status(404).send('Cliente no encontrado');
     }
+
+    if (!nombre_completo) {
+      const clienteData = cliente.toJSON ? cliente.toJSON() : cliente;
+      return res.render('clientes/form', {
+        cliente: { ...clienteData, ...req.body },
+        error: 'El nombre completo es requerido'
+      });
+    }
+
     await cliente.update({
       nombre_completo,
       telefono: telefono || null,
@@ -78,11 +79,19 @@ exports.update = async (req, res) => {
     res.redirect(`/clientes/${req.params.id}`);
   } catch (error) {
     console.error('Error al actualizar cliente:', error);
-    const cliente = await Cliente.findByPk(req.params.id);
-    res.render('clientes/form', {
-      cliente: { ...cliente.toJSON(), ...req.body },
-      error: 'Error al actualizar el cliente'
-    });
+    try {
+      const cliente = await Cliente.findByPk(req.params.id);
+      const clienteData = cliente ? (cliente.toJSON ? cliente.toJSON() : cliente) : req.body;
+      res.render('clientes/form', {
+        cliente: { ...clienteData, ...req.body },
+        error: 'Error al actualizar el cliente: ' + error.message
+      });
+    } catch (err) {
+      res.render('clientes/form', {
+        cliente: req.body,
+        error: 'Error al actualizar el cliente: ' + error.message
+      });
+    }
   }
 };
 

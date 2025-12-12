@@ -249,8 +249,17 @@ async function validarCapacidadTotal(fecha, horaInicio, numeroPersonas, duracion
   const config = await ConfiguracionRestaurante.getConfig();
   const duracion = duracionMinutos || config.duracion_estandar_reserva;
   
+  // Normalizar la hora de inicio
+  let horaNormalizada = horaInicio;
+  if (typeof horaInicio === 'string' && horaInicio.length > 5) {
+    horaNormalizada = horaInicio.substring(0, 5);
+  }
+  
   // Calcular hora fin
-  const [horaH, horaM] = horaInicio.split(':').map(Number);
+  const [horaH, horaM] = horaNormalizada.split(':').map(Number);
+  if (isNaN(horaH) || isNaN(horaM)) {
+    throw new Error(`Formato de hora inválido: ${horaInicio}`);
+  }
   const horaInicioMinutos = horaH * 60 + horaM;
   const horaFinMinutos = horaInicioMinutos + duracion;
   
@@ -258,6 +267,14 @@ async function validarCapacidadTotal(fecha, horaInicio, numeroPersonas, duracion
   const capacidadTotal = await Mesa.sum('capacidad', {
     where: { estado: 'activa' }
   }) || 0;
+  
+  // Si no hay mesas activas, no se puede validar capacidad
+  if (capacidadTotal === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEBUG validarCapacidadTotal] No hay mesas activas, no se valida capacidad');
+    }
+    return true; // Permitir la reserva si no hay mesas configuradas
+  }
   
   // Obtener todas las reservas activas en ese horario
   const reservasExistentes = await Reserva.findAll({
@@ -272,13 +289,30 @@ async function validarCapacidadTotal(fecha, horaInicio, numeroPersonas, duracion
   // Calcular personas ya reservadas que se solapan con este horario
   let personasReservadas = 0;
   for (const reserva of reservasExistentes) {
-    const [rHoraH, rHoraM] = reserva.hora_inicio.split(':').map(Number);
+    // Normalizar hora de inicio de la reserva existente
+    let rHoraInicio = reserva.hora_inicio;
+    if (typeof rHoraInicio === 'string' && rHoraInicio.length > 5) {
+      rHoraInicio = rHoraInicio.substring(0, 5);
+    }
+    
+    const [rHoraH, rHoraM] = rHoraInicio.split(':').map(Number);
+    if (isNaN(rHoraH) || isNaN(rHoraM)) {
+      continue; // Saltar si no se puede parsear
+    }
     const rHoraInicioMinutos = rHoraH * 60 + rHoraM;
     
     let rHoraFinMinutos;
     if (reserva.hora_fin) {
-      const [rFinH, rFinM] = reserva.hora_fin.split(':').map(Number);
-      rHoraFinMinutos = rFinH * 60 + rFinM;
+      let rHoraFin = reserva.hora_fin;
+      if (typeof rHoraFin === 'string' && rHoraFin.length > 5) {
+        rHoraFin = rHoraFin.substring(0, 5);
+      }
+      const [rFinH, rFinM] = rHoraFin.split(':').map(Number);
+      if (!isNaN(rFinH) && !isNaN(rFinM)) {
+        rHoraFinMinutos = rFinH * 60 + rFinM;
+      } else {
+        rHoraFinMinutos = rHoraInicioMinutos + config.duracion_estandar_reserva;
+      }
     } else {
       rHoraFinMinutos = rHoraInicioMinutos + config.duracion_estandar_reserva;
     }
@@ -291,6 +325,11 @@ async function validarCapacidadTotal(fecha, horaInicio, numeroPersonas, duracion
   
   // Validar que no se exceda la capacidad
   const capacidadNecesaria = personasReservadas + numeroPersonas;
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEBUG validarCapacidadTotal] Fecha: ${fecha}, Hora: ${horaNormalizada}, Personas: ${numeroPersonas}`);
+    console.log(`[DEBUG validarCapacidadTotal] Capacidad total: ${capacidadTotal}, Ya reservado: ${personasReservadas}, Necesario: ${numeroPersonas}, Total necesario: ${capacidadNecesaria}`);
+  }
   
   if (capacidadNecesaria > capacidadTotal) {
     throw new Error(`No hay suficiente capacidad disponible. Capacidad total: ${capacidadTotal}, ya reservado: ${personasReservadas}, necesario: ${numeroPersonas}`);
